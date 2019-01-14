@@ -1,0 +1,8 @@
+[package]
+name = "nice-engine-capi"
+version = "0.1.0"
+authors = ["IcyDefiance <icydefiance@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+nice-engine = { path = "../" }
