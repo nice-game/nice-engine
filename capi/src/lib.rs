@@ -7,7 +7,7 @@ const GGD_API_VERSION: u64 = 0;
 
 #[allow(non_snake_case)]
 #[no_mangle]
-pub unsafe fn GGD_DriverMain(X: *mut GGD_DriverContext) -> GGDriverStatus {
+pub unsafe extern fn GGD_DriverMain(X: *mut GGD_DriverContext) -> GGDriverStatus {
 	let X = &*X;
 
 	if X.Version == GGD_API_VERSION {
@@ -28,7 +28,7 @@ pub enum GGDriverStatus {
 	GGD_STATUS_VERSION_INVALID = 3,
 }
 
-#[allow(non_camel_case_types)]
+#[allow(non_snake_case)]
 #[repr(C)]
 pub struct GGD_DriverContext {
 	Version: u64,
@@ -36,7 +36,7 @@ pub struct GGD_DriverContext {
 	RegisterPhysicsEngine: extern fn (*mut GGD_PhysicsEngine),
 }
 
-#[allow(non_camel_case_types)]
+#[allow(non_snake_case)]
 #[repr(C)]
 pub struct GGD_PhysicsEngine {
 	Name: *const c_char,

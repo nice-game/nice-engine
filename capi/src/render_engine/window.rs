@@ -8,6 +8,7 @@ type HINSTANCE = *mut c_void;
 type HWND = *mut c_void;
 type HDC = *mut c_void;
 
+#[allow(non_snake_case)]
 pub unsafe extern fn Window_Alloc(info: *mut GGD_WindowInfo) -> *mut GGD_Window {
 	let info_ref = &*info;
 
@@ -40,15 +41,18 @@ pub unsafe extern fn Window_Alloc(info: *mut GGD_WindowInfo) -> *mut GGD_Window 
 	Box::into_raw(Box::new(window))
 }
 
-pub extern fn Window_Free(_this: *mut GGD_Window) {
-
+#[allow(non_snake_case)]
+pub unsafe extern fn Window_Free(this: *mut GGD_Window) {
+	Box::from_raw(this);
 }
 
+#[allow(non_snake_case)]
 pub extern fn Window_IsValid(_this: *mut GGD_Window) -> i32 {
 	true as i32
 }
 
-pub extern fn Window_Resize(_this: *mut GGD_Window, w: u32, h: u32) {
+#[allow(non_snake_case)]
+pub extern fn Window_Resize(_this: *mut GGD_Window, _w: u32, _h: u32) {
 
 }
 
@@ -56,7 +60,7 @@ pub extern fn Window_Resize(_this: *mut GGD_Window, w: u32, h: u32) {
 
 // }
 
-#[allow(non_camel_case_types)]
+#[allow(dead_code, non_camel_case_types)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(C)]
 pub enum GGPlatform {
