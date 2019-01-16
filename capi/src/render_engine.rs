@@ -1,5 +1,7 @@
+mod image_data;
 mod window;
 
+use self::image_data::{ GGD_ImageData, ImageData_Alloc, ImageData_Free, ImageData_Prepare };
 use self::window::{ GGD_WindowInfo, GGD_Window, Window_Alloc, Window_Free, Window_IsValid, Window_Resize }; // Window_Draw
 use std::os::raw::c_char;
 
@@ -28,9 +30,9 @@ pub const RENDER_ENGINE: GGD_RenderEngine = GGD_RenderEngine {
 	// MeshData_GetIndexData: extern fn (*mut GGD_MeshData, buffer: *mut c_void, count: *mut u32, format: *mut GGIndexFormat),
 	// MeshData_UseIndexData: None,
 
-	// ImageData_Alloc: extern fn () ->  *mut GGD_ImageData,
-	// ImageData_Free: extern fn (*mut GGD_ImageData),
-	// ImageData_Prepare: extern fn (*mut GGD_ImageData),
+	ImageData_Alloc: ImageData_Alloc,
+	ImageData_Free: ImageData_Free,
+	ImageData_Prepare: ImageData_Prepare,
 	// ImageData_SetCacheData: None,
 	// ImageData_GetCacheData: None,
 	// ImageData_SetPixelData: extern fn (image: *mut GGD_ImageData, buffer: *const c_void, x: u32, y: u32, z: u32, format: GGPixelFormat),
@@ -89,9 +91,9 @@ pub struct GGD_RenderEngine {
 	// MeshData_GetIndexData: extern fn (*mut GGD_MeshData, buffer: *mut c_void, count: *mut u32, format: *mut GGIndexFormat),
 	// MeshData_UseIndexData: Option<extern fn (*mut GGD_MeshData, src: *mut GGD_MeshData)>,
 
-	// ImageData_Alloc: extern fn () ->  *mut GGD_ImageData,
-	// ImageData_Free: extern fn (*mut GGD_ImageData),
-	// ImageData_Prepare: extern fn (*mut GGD_ImageData),
+	ImageData_Alloc: extern fn () -> *mut GGD_ImageData,
+	ImageData_Free: unsafe extern fn (*mut GGD_ImageData),
+	ImageData_Prepare: extern fn (*mut GGD_ImageData),
 	// ImageData_SetCacheData: Option<extern fn (image: *mut GGD_ImageData, buffer: *const c_void, size: u32) -> i32>,
 	// ImageData_GetCacheData: Option<extern fn (image: *mut GGD_ImageData, buffer: *mut c_void, size: *mut u32) -> i32>,
 	// ImageData_SetPixelData: extern fn (image: *mut GGD_ImageData, buffer: *const c_void, x: u32, y: u32, z: u32, format: GGPixelFormat),
