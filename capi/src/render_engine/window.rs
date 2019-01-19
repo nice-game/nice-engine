@@ -1,6 +1,7 @@
-use crate::ctx;
+use crate::{ ctx, game_graph::GGPlatform };
+use super::{ GGD_Camera, GGD_ImageData };
 use nice_engine::surface::Surface;
-use std::{ mem, os::raw::c_void, ptr::null_mut };
+use std::{ os::raw::c_void, ptr::null_mut };
 
 #[allow(non_camel_case_types)]
 pub type GGD_Window = Surface;
@@ -15,22 +16,22 @@ pub unsafe extern fn Window_Alloc(info: *mut GGD_WindowInfo) -> *mut GGD_Window 
 
 	let surface = match GGPlatform::from_u64_unchecked(info_ref.platform) {
 		#[cfg(windows)]
-		GGPlatform::PLAT_WIN32 => {
+		GGPlatform::WIN32 => {
 			let info_ref = &*(info as *mut GGD_WindowInfo_WIN32);
 			Surface::from_hwnd(ctx::get(), info_ref.hinstance, info_ref.hwnd)
 		},
 		#[cfg(unix)]
-		GGPlatform::PLAT_WAYLAND => {
+		GGPlatform::WAYLAND => {
 			let info_ref = &*(info as *mut GGD_WindowInfo_WAYLAND);
 			Surface::from_wayland(ctx::get(), info_ref.display, info_ref.surface)
 		},
 		#[cfg(unix)]
-		GGPlatform::PLAT_X11 => {
+		GGPlatform::X11 => {
 			let info_ref = &*(info as *mut GGD_WindowInfo_X11);
 			Surface::from_xlib(ctx::get(), info_ref.display, info_ref.surface)
 		},
 		#[cfg(unix)]
-		GGPlatform::PLAT_OSX => {
+		GGPlatform::OSX => {
 			let info_ref = &*(info as *mut GGD_WindowInfo_X11);
 			Surface::from_xlib(ctx::get(), info_ref.display, info_ref.surface)
 		},
@@ -61,24 +62,9 @@ pub unsafe extern fn Window_Resize(this: *mut GGD_Window, w: u32, h: u32) {
 	this_ref.resize(w, h);
 }
 
-// pub extern fn Window_Draw(this: *mut GGD_Window, out: *mut GGD_ImageData) {
+#[allow(non_snake_case)]
+pub extern fn Window_Draw(_this: *mut GGD_Window, _src: *mut GGD_Camera, _overlay: *mut GGD_ImageData) {
 
-// }
-
-#[allow(dead_code, non_camel_case_types)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[repr(C)]
-pub enum GGPlatform {
-	PLAT_UNDEFINED = 0,
-	PLAT_WIN32 = 1,
-	PLAT_X11 = 2,
-	PLAT_WAYLAND = 3,
-	PLAT_OSX = 4,
-}
-impl GGPlatform {
-	unsafe fn from_u64_unchecked(val: u64) -> Self {
-		mem::transmute(val as u32)
-	}
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
