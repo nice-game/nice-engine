@@ -1,8 +1,9 @@
-use nice_engine::window::Window;
-use std::{ mem, os::raw::c_void };
+use crate::ctx;
+use nice_engine::surface::Surface;
+use std::{ mem, os::raw::c_void, ptr::null_mut };
 
 #[allow(non_camel_case_types)]
-pub type GGD_Window = Window;
+pub type GGD_Window = Surface;
 
 type HINSTANCE = *mut c_void;
 type HWND = *mut c_void;
@@ -12,33 +13,35 @@ type HDC = *mut c_void;
 pub unsafe extern fn Window_Alloc(info: *mut GGD_WindowInfo) -> *mut GGD_Window {
 	let info_ref = &*info;
 
-	#[cfg(windows)]
-	let window = match GGPlatform::from_u64_unchecked(info_ref.platform) {
+	let surface = match GGPlatform::from_u64_unchecked(info_ref.platform) {
+		#[cfg(windows)]
 		GGPlatform::PLAT_WIN32 => {
 			let info_ref = &*(info as *mut GGD_WindowInfo_WIN32);
-			Window::from_hwnd(info_ref.hinstance, info_ref.hwnd)
+			Surface::from_hwnd(ctx::get(), info_ref.hinstance, info_ref.hwnd)
 		},
-		_ => panic!("invalid platform"),
-	};
-
-	#[cfg(unix)]
-	let window = match GGPlatform::from_u64_unchecked(info_ref.platform) {
+		#[cfg(unix)]
 		GGPlatform::PLAT_WAYLAND => {
 			let info_ref = &*(info as *mut GGD_WindowInfo_WAYLAND);
-			Window::from_wayland(info_ref.display, info_ref.surface)
+			Surface::from_wayland(ctx::get(), info_ref.display, info_ref.surface)
 		},
+		#[cfg(unix)]
 		GGPlatform::PLAT_X11 => {
 			let info_ref = &*(info as *mut GGD_WindowInfo_X11);
-			Window::from_xlib(info_ref.display, info_ref.window)
+			Surface::from_xlib(ctx::get(), info_ref.display, info_ref.surface)
 		},
+		#[cfg(unix)]
 		GGPlatform::PLAT_OSX => {
 			let info_ref = &*(info as *mut GGD_WindowInfo_X11);
-			Window::from_xlib(info_ref.display, info_ref.window)
+			Surface::from_xlib(ctx::get(), info_ref.display, info_ref.surface)
 		},
 		_ => panic!("invalid platform"),
 	};
 
-	Box::into_raw(Box::new(window))
+	if let Ok(surface) = surface {
+		Box::into_raw(Box::new(surface))
+	} else {
+		null_mut()
+	}
 }
 
 #[allow(non_snake_case)]
@@ -52,8 +55,10 @@ pub extern fn Window_IsValid(_this: *mut GGD_Window) -> i32 {
 }
 
 #[allow(non_snake_case)]
-pub extern fn Window_Resize(_this: *mut GGD_Window, _w: u32, _h: u32) {
+pub unsafe extern fn Window_Resize(this: *mut GGD_Window, w: u32, h: u32) {
+	let this_ref = &mut *this;
 
+	this_ref.resize(w, h);
 }
 
 // pub extern fn Window_Draw(this: *mut GGD_Window, out: *mut GGD_ImageData) {
@@ -81,7 +86,7 @@ impl GGPlatform {
 pub struct GGD_WindowInfo {
 	/// GGPlatform
 	platform: u64,
-	sdlwindow: *mut c_void,
+	sdlsurface: *mut c_void,
 }
 
 #[cfg(unix)]
@@ -110,5 +115,5 @@ pub struct GGD_WindowInfo_WIN32 {
 pub struct GGD_WindowInfo_X11 {
 	info: GGD_WindowInfo,
 	display: *mut Display,
-	window: Window,
+	surface: Surface,
 }

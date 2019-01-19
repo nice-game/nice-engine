@@ -75,7 +75,7 @@ pub struct GGD_RenderEngine {
 	Window_Alloc: unsafe extern fn (info: *mut GGD_WindowInfo) -> *mut GGD_Window,
 	Window_Free: unsafe extern fn (*mut GGD_Window),
 	Window_IsValid: extern fn (*mut GGD_Window) -> i32,
-	Window_Resize: extern fn (*mut GGD_Window, w: u32, h: u32),
+	Window_Resize: unsafe extern fn (*mut GGD_Window, w: u32, h: u32),
 	// Window_Draw: extern fn (*mut GGD_Window, *mut GGD_ImageData),
 
 	// MeshData_Alloc: extern fn () -> *mut GGD_MeshData,
