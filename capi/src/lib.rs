@@ -1,11 +1,15 @@
 mod game_graph;
+mod game_graph_driver;
 mod render_engine;
 
 use crate::game_graph::GGDriverStatus;
-use self::render_engine::{ RENDER_ENGINE, GGD_RenderEngine };
+use self::{
+	game_graph_driver::GGD_DriverContext,
+	render_engine::{ RENDER_ENGINE },
+};
 use libc::strlen;
 use nice_engine::Version;
-use std::{ os::raw::c_char, slice, str };
+use std::{ slice, str };
 
 const GGD_API_VERSION: u64 = 0;
 
@@ -43,20 +47,6 @@ pub unsafe extern fn GGD_DriverMain(X: *mut GGD_DriverContext) -> GGDriverStatus
 		GGDriverStatus::VERSION_INVALID
 	}
 }
-
-#[allow(non_snake_case)]
-#[repr(C)]
-pub struct GGD_DriverContext {
-	APIVersion: u64,
-	GameVersion: u64,
-	GameName: *const c_char,
-	RegisterRenderEngine: extern fn (*mut GGD_RenderEngine),
-	RegisterPhysicsEngine: extern fn (*mut GGD_PhysicsEngine),
-}
-
-#[allow(non_snake_case)]
-#[repr(C)]
-pub struct GGD_PhysicsEngine { }
 
 #[cfg(test)]
 mod tests {

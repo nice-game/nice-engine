@@ -1,8 +1,5 @@
-use super::{ GGTransform, GGD_MeshBatch };
+use crate::{ game_graph::GGTransform, game_graph_driver::{ GGD_Camera, GGD_MeshBatch } };
 use nice_engine::camera::Camera;
-
-#[allow(non_camel_case_types)]
-pub type GGD_Camera = Camera;
 
 #[allow(non_snake_case)]
 pub extern fn Camera_Alloc() -> *mut GGD_Camera {

@@ -1,7 +1,7 @@
-use super::{ GGMaterialLayer, GGTransform, GGD_ImageData, GGD_MeshBatch, GGD_MeshData };
-
-#[allow(non_camel_case_types)]
-pub struct GGD_MeshInstance { }
+use crate::{
+	game_graph::{ GGMaterialLayer, GGTransform },
+	game_graph_driver::{ GGD_ImageData, GGD_MeshBatch, GGD_MeshData, GGD_MeshInstance },
+};
 
 #[allow(non_snake_case)]
 pub extern fn MeshInstance_Alloc(_batch: *mut GGD_MeshBatch) -> *mut GGD_MeshInstance {

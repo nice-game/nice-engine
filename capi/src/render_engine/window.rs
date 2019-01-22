@@ -1,14 +1,14 @@
-use crate::{ ctx, game_graph::GGPlatform };
-use super::{ GGD_Camera, GGD_ImageData };
+use crate::{
+	ctx,
+	game_graph::GGPlatform,
+	game_graph_driver::{ GGD_Camera, GGD_ImageData, GGD_Window, GGD_WindowInfo },
+};
+#[cfg(unix)]
+use crate::game_graph_driver::{ GGD_WindowInfo_WAYLAND, GGD_WindowInfo_X11 };
+#[cfg(windows)]
+use crate::game_graph_driver::GGD_WindowInfo_WIN32;
 use nice_engine::surface::Surface;
-use std::{ os::raw::c_void, ptr::null_mut };
-
-#[allow(non_camel_case_types)]
-pub type GGD_Window = Surface;
-
-type HINSTANCE = *mut c_void;
-type HWND = *mut c_void;
-type HDC = *mut c_void;
+use std::{ ptr::null_mut };
 
 #[allow(non_snake_case)]
 pub unsafe extern fn Window_Alloc(info: *mut GGD_WindowInfo) -> *mut GGD_Window {
@@ -65,41 +65,4 @@ pub unsafe extern fn Window_Resize(this: *mut GGD_Window, w: u32, h: u32) {
 #[allow(non_snake_case)]
 pub extern fn Window_Draw(_this: *mut GGD_Window, _src: *mut GGD_Camera, _overlay: *mut GGD_ImageData) {
 
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[repr(C)]
-pub struct GGD_WindowInfo {
-	/// GGPlatform
-	platform: u64,
-	sdlsurface: *mut c_void,
-}
-
-#[cfg(unix)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[repr(C)]
-pub struct GGD_WindowInfo_WAYLAND {
-	info: GGD_WindowInfo,
-	display: *mut wl_display,
-	surface: *mut wl_surface,
-	wmsurface: *mut wl_shell_surface,
-}
-
-#[cfg(windows)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[repr(C)]
-pub struct GGD_WindowInfo_WIN32 {
-	info: GGD_WindowInfo,
-	hinstance: HINSTANCE,
-	hwnd: HWND,
-	hdc: HDC,
-}
-
-#[cfg(unix)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[repr(C)]
-pub struct GGD_WindowInfo_X11 {
-	info: GGD_WindowInfo,
-	display: *mut Display,
-	surface: Surface,
 }

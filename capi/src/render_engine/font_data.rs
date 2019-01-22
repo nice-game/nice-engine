@@ -1,7 +1,4 @@
-use super::GGD_ImageData;
-
-#[allow(non_camel_case_types)]
-pub struct GGD_FontData { }
+use crate::game_graph_driver::{ GGD_FontData, GGD_ImageData };
 
 #[allow(non_snake_case)]
 pub extern fn FontData_Alloc() -> *mut GGD_FontData {

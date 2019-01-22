@@ -1,8 +1,5 @@
-use crate::game_graph::{ GGIndexFormat, GGVertexFormat };
+use crate::{ game_graph::{ GGIndexFormat, GGVertexFormat }, game_graph_driver::GGD_MeshData };
 use libc::c_void;
-
-#[allow(non_camel_case_types)]
-pub struct GGD_MeshData { }
 
 #[allow(non_snake_case)]
 pub extern fn MeshData_Alloc() -> *mut GGD_MeshData {

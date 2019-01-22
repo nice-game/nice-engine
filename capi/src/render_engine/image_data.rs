@@ -1,9 +1,8 @@
-use crate::game_graph::{ GGImageUsage, GGPixelFormat };
-use super::{ GGD_Camera, GGD_FontData };
+use crate::{
+	game_graph::{ GGImageUsage, GGPixelFormat },
+	game_graph_driver::{ GGD_Camera, GGD_FontData, GGD_ImageData },
+};
 use libc::c_void;
-
-#[allow(non_camel_case_types)]
-pub struct GGD_ImageData { }
 
 #[allow(non_snake_case)]
 pub extern fn ImageData_Alloc(_usage: GGImageUsage, _x: u32, _y: u32, _format: GGPixelFormat) -> *mut GGD_ImageData {
