@@ -1,5 +1,5 @@
 use crate::game_graph::*;
-use nice_engine::{ camera::Camera, surface::Surface };
+use nice_engine::{ camera::Camera, mesh_data::MeshDataAbstract, surface::Surface };
 use libc::c_void;
 use std::os::raw::c_char;
 
@@ -26,14 +26,16 @@ pub struct GGD_ImageData { }
 pub struct GGD_MeshBatch { }
 
 #[allow(non_camel_case_types)]
-pub struct GGD_MeshData { }
+pub type GGD_MeshData = Box<MeshDataAbstract>;
 
 #[allow(non_camel_case_types)]
 pub struct GGD_MeshInstance { }
 
 #[allow(non_snake_case)]
 #[repr(C)]
-pub struct GGD_PhysicsEngine { }
+pub struct GGD_PhysicsEngine {
+	// TODO: implement physics engine
+}
 
 #[allow(non_snake_case)]
 #[repr(C)]
@@ -49,7 +51,7 @@ pub struct GGD_RenderEngine {
 	pub Window_Resize: unsafe extern fn (*mut GGD_Window, w: u32, h: u32),
 	pub Window_Draw: extern fn (*mut GGD_Window, src: *mut GGD_Camera, overlay: *mut GGD_ImageData),
 
-	pub MeshData_Alloc: extern fn () -> *mut GGD_MeshData,
+	pub MeshData_Alloc: unsafe extern fn () -> *mut GGD_MeshData,
 	pub MeshData_Free: unsafe extern fn (*mut GGD_MeshData),
 	pub MeshData_Prepare: Option<extern fn (*mut GGD_MeshData)>,
 	pub MeshData_SetCacheData: Option<extern fn (*mut GGD_MeshData, buffer: *const c_void, size: u32) -> i32>,
@@ -99,7 +101,7 @@ pub struct GGD_RenderEngine {
 
 	pub Camera_Alloc: extern fn () -> *mut GGD_Camera,
 	pub Camera_Free: unsafe extern fn (*mut GGD_Camera),
-	pub Camera_SetPerspective: extern fn (*mut GGD_Camera, aspect: f32, fovx: f32, zNear: f32, zFar: f32),
+	pub Camera_SetPerspective: unsafe extern fn (*mut GGD_Camera, aspect: f32, fovx: f32, zNear: f32, zFar: f32),
 	pub Camera_SetOrthographic: Option<extern fn (*mut GGD_Camera, w: f32, h: f32, zNear: f32, zFar: f32)>,
 	pub Camera_SetParabolic: Option<extern fn (*mut GGD_Camera, scale: f32)>,
 	pub Camera_SetMeshBatch: extern fn (*mut GGD_Camera, *mut GGD_MeshBatch),

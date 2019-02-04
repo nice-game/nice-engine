@@ -1,14 +1,18 @@
 pub mod camera;
 pub mod device;
+pub mod mesh_data;
 pub mod surface;
 
-pub use vulkano::instance::{ InstanceCreationError, Version };
+pub use vulkano::{
+	instance::{ InstanceCreationError, Version },
+	sync::GpuFuture,
+};
 
 use self::device::DeviceCtx;
 use log::info;
 use std::sync::Arc;
 use vulkano::{
-	device::{ Device, DeviceExtensions, Features },
+	device::{ Device, DeviceExtensions, Features, Queue },
 	instance::{ ApplicationInfo, Instance, InstanceExtensions, PhysicalDevice },
 	swapchain::Surface,
 };
@@ -49,6 +53,14 @@ impl Context {
 		};
 
 		Ok(Self { instance: Instance::new(Some(&app_info), &exts, None)?, devices: vec![] })
+	}
+
+	fn device(&self) -> &Arc<Device> {
+		self.devices[0].device()
+	}
+
+	fn queue(&self) -> &Arc<Queue> {
+		self.devices[0].queue()
 	}
 
 	fn get_device_for_surface<T>(&mut self, surface: &Surface<T>) -> Arc<DeviceCtx> {
