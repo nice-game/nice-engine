@@ -1,5 +1,5 @@
 use crate::game_graph::*;
-use nice_engine::{ camera::Camera, mesh_data::MeshDataAbstract, surface::Surface };
+use nice_engine::{ camera::Camera, mesh_data::MeshData, surface::Surface };
 use libc::c_void;
 use std::os::raw::c_char;
 
@@ -26,7 +26,7 @@ pub struct GGD_ImageData { }
 pub struct GGD_MeshBatch { }
 
 #[allow(non_camel_case_types)]
-pub type GGD_MeshData = Box<MeshDataAbstract>;
+pub type GGD_MeshData = MeshData;
 
 #[allow(non_camel_case_types)]
 pub struct GGD_MeshInstance { }
@@ -58,9 +58,9 @@ pub struct GGD_RenderEngine {
 	pub MeshData_GetCacheData: Option<extern fn (*mut GGD_MeshData, buffer: *mut c_void, size: *mut u32) -> i32>,
 	pub MeshData_SetDistanceData: Option<extern fn (*mut GGD_MeshData, buffer: *const c_void, x: u32, y: u32, z: u32, format: GGDistanceFormat)>,
 	pub MeshData_GetDistanceData: Option<extern fn (*mut GGD_MeshData, buffer: *mut c_void, x: u32, y: u32, z: u32, format: *mut GGDistanceFormat)>,
-	pub MeshData_SetVertexData: extern fn (*mut GGD_MeshData, buffer: *const c_void, count: u32, format: GGVertexFormat),
+	pub MeshData_SetVertexData: unsafe extern fn (*mut GGD_MeshData, buffer: *const c_void, count: u32, format: GGVertexFormat),
 	pub MeshData_GetVertexData: extern fn (*mut GGD_MeshData, buffer: *mut c_void, count: *mut u32, format: *mut GGVertexFormat),
-	pub MeshData_SetIndexData: extern fn (*mut GGD_MeshData, buffer: *const c_void, count: u32, format: GGIndexFormat),
+	pub MeshData_SetIndexData: unsafe extern fn (*mut GGD_MeshData, buffer: *const c_void, count: u32, format: GGIndexFormat),
 	pub MeshData_GetIndexData: extern fn (*mut GGD_MeshData, buffer: *mut c_void, count: *mut u32, format: *mut GGIndexFormat),
 	pub MeshData_UseIndexData: Option<extern fn (*mut GGD_MeshData, src: *mut GGD_MeshData)>,
 

@@ -5,13 +5,12 @@ use vulkano::{
 	device::Queue,
 	memory::DeviceMemoryAllocError,
 	sync::GpuFuture,
-};
-
-pub trait MeshDataAbstract {}
+}
 
 pub struct MeshData {
 	vertices: Arc<BufferAccess>,
 	indices: Arc<BufferAccess>,
+	queue: Arc<Queue>,
 }
 impl MeshData {
 	pub fn new<V, I>(
@@ -25,34 +24,30 @@ impl MeshData {
 		let (indices, indices_future) =
 			ImmutableBuffer::from_data(index_data, BufferUsage::index_buffer(), ctx.queue().clone())?;
 
-		Ok((Self { vertices: vertices, indices: indices }, vertices_future.join(indices_future)))
+		Ok((
+			Self { vertices: vertices, indices: indices, queue: ctx.queue().clone() },
+			vertices_future.join(indices_future),
+		))
 	}
 
-	pub fn set_vertex_data<T>(
-		self,
-		ctx: &Context,
-		data: T
-	) -> Result<(MeshData, impl GpuFuture), DeviceMemoryAllocError>
+	pub fn set_vertex_data<T>(&mut self, data: T) -> Result<impl GpuFuture, DeviceMemoryAllocError>
 	where T: Send + Sync + 'static {
 		let (vertices, vertices_future) =
-			ImmutableBuffer::from_data(data, BufferUsage::vertex_buffer(), ctx.queue().clone())?;
+			ImmutableBuffer::from_data(data, BufferUsage::vertex_buffer(), self.queue.clone())?;
+		self.vertices = vertices;
 
-		Ok((MeshData { vertices: vertices, indices: self.indices }, vertices_future))
+		Ok(vertices_future)
 	}
 
-	pub fn set_index_data<T>(
-		self,
-		ctx: &Context,
-		data: T
-	) -> Result<(MeshData, impl GpuFuture), DeviceMemoryAllocError>
+	pub fn set_index_data<T>(&mut self, data: T) -> Result<impl GpuFuture, DeviceMemoryAllocError>
 	where T: Send + Sync + 'static {
 		let (indices, indices_future) =
-			ImmutableBuffer::from_data(data, BufferUsage::vertex_buffer(), ctx.queue().clone())?;
+			ImmutableBuffer::from_data(data, BufferUsage::vertex_buffer(), self.queue.clone())?;
+		self.indices = indices;
 
-		Ok((MeshData { vertices: self.vertices, indices: indices }, indices_future))
+		Ok(indices_future)
 	}
 }
-impl MeshDataAbstract for MeshData {}
 
 #[repr(C)]
 pub struct Pntl_32F {
