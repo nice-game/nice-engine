@@ -5,7 +5,7 @@ use vulkano::{
 	device::Queue,
 	memory::DeviceMemoryAllocError,
 	sync::GpuFuture,
-}
+};
 
 pub struct MeshData {
 	vertices: Arc<BufferAccess>,
