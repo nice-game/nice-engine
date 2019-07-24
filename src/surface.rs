@@ -1,39 +1,30 @@
 use crate::Context;
-use std::{ os::raw::c_ulong, sync::Arc };
+use std::{os::raw::c_ulong, sync::Arc};
 use vulkano::{
 	device::DeviceOwned,
 	format::Format,
 	image::SwapchainImage,
 	swapchain::{
-		PresentMode,
-		Surface as VkSurface,
-		SurfaceCreationError,
-		SurfaceTransform,
-		Swapchain,
-		SwapchainCreationError
+		PresentMode, Surface as VkSurface, SurfaceCreationError, SurfaceTransform, Swapchain,
+		SwapchainCreationError,
 	},
 };
 
-pub struct Surface {
-	surface: Arc<VkSurface<()>>,
-	swapchain: Arc<Swapchain<()>>,
-	images: Vec<Arc<SwapchainImage<()>>>,
+pub struct Surface<W = ()> {
+	surface: Arc<VkSurface<W>>,
+	swapchain: Arc<Swapchain<W>>,
+	images: Vec<Arc<SwapchainImage<W>>>,
 }
-impl Surface {
-	pub unsafe fn from_hwnd<T, U>(ctx: &mut Context, hinstance: *const T, hwnd: *const U) -> Result<Self, SurfaceCreationError> {
-		Ok(Self::new_inner(ctx, VkSurface::from_hwnd(ctx.instance.clone(), hinstance, hwnd, ())?))
-	}
-
-	pub unsafe fn from_xlib<D>(ctx: &mut Context, display: *const D, surface: c_ulong) -> Result<Self, SurfaceCreationError> {
-		Ok(Self::new_inner(ctx, VkSurface::from_xlib(ctx.instance.clone(), display, surface, ())?))
-	}
-
-	pub unsafe fn from_wayland<D, S>(ctx: &mut Context, display: *const D, surface: *const S) -> Result<Self, SurfaceCreationError> {
-		Ok(Self::new_inner(ctx, VkSurface::from_wayland(ctx.instance.clone(), display, surface, ())?))
+impl<W> Surface<W> {
+	#[cfg(feature = "window")]
+	pub fn from_vk(ctx: &mut Context, surface: Arc<VkSurface<W>>) -> Self {
+		Self::new_inner(ctx, surface)
 	}
 
 	pub fn resize(&mut self, width: u32, height: u32) {
-		let dimensions = self.surface.capabilities(self.swapchain.device().physical_device())
+		let dimensions = self
+			.surface
+			.capabilities(self.swapchain.device().physical_device())
 			.expect("failed to get surface capabilities")
 			.current_extent
 			.unwrap_or([width, height]);
@@ -42,7 +33,7 @@ impl Surface {
 			Ok((swapchain, images)) => {
 				self.swapchain = swapchain;
 				self.images = images;
-			},
+			}
 			// this normally happens when the window was resized after getting the surface capabilities, but before
 			// recreating the swapchain. there should be another resize event on the next frame so we just ignore the
 			// error here.
@@ -51,10 +42,12 @@ impl Surface {
 		}
 	}
 
-	fn new_inner(ctx: &mut Context, surface: Arc<VkSurface<()>>) -> Self {
+	fn new_inner(ctx: &mut Context, surface: Arc<VkSurface<W>>) -> Self {
 		let device = ctx.get_device_for_surface(&surface);
 		let queue = device.queue();
-		let caps = surface.capabilities(queue.device().physical_device()).expect("failed to get surface capabilities");
+		let caps = surface
+			.capabilities(queue.device().physical_device())
+			.expect("failed to get surface capabilities");
 
 		let (swapchain, images) = Swapchain::new(
 			queue.device().clone(),
@@ -69,9 +62,48 @@ impl Surface {
 			caps.supported_composite_alpha.iter().next().unwrap(),
 			PresentMode::Fifo,
 			true,
-			None
-		).expect("failed to create swapchain");
+			None,
+		)
+		.expect("failed to create swapchain");
 
-		Self { surface: surface, swapchain: swapchain, images: images }
+		Self {
+			surface: surface,
+			swapchain: swapchain,
+			images: images,
+		}
+	}
+}
+impl Surface<()> {
+	pub unsafe fn from_hwnd<T, U>(
+		ctx: &mut Context,
+		hinstance: *const T,
+		hwnd: *const U,
+	) -> Result<Self, SurfaceCreationError> {
+		Ok(Self::new_inner(
+			ctx,
+			VkSurface::from_hwnd(ctx.instance.clone(), hinstance, hwnd, ())?,
+		))
+	}
+
+	pub unsafe fn from_xlib<D>(
+		ctx: &mut Context,
+		display: *const D,
+		surface: c_ulong,
+	) -> Result<Self, SurfaceCreationError> {
+		Ok(Self::new_inner(
+			ctx,
+			VkSurface::from_xlib(ctx.instance.clone(), display, surface, ())?,
+		))
+	}
+
+	pub unsafe fn from_wayland<D, S>(
+		ctx: &mut Context,
+		display: *const D,
+		surface: *const S,
+	) -> Result<Self, SurfaceCreationError> {
+		Ok(Self::new_inner(
+			ctx,
+			VkSurface::from_wayland(ctx.instance.clone(), display, surface, ())?,
+		))
 	}
 }

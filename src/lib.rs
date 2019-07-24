@@ -2,6 +2,8 @@ pub mod camera;
 pub mod device;
 pub mod mesh_data;
 pub mod surface;
+#[cfg(feature = "window")]
+pub mod window;
 
 pub use vulkano::{
 	instance::{ InstanceCreationError, Version },
