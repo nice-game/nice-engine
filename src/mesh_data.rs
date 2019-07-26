@@ -8,8 +8,8 @@ use vulkano::{
 };
 
 pub struct MeshData {
-	vertices: Arc<BufferAccess>,
-	indices: Arc<BufferAccess>,
+	vertices: Arc<dyn BufferAccess>,
+	indices: Arc<dyn BufferAccess>,
 	queue: Arc<Queue>,
 }
 impl MeshData {

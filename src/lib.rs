@@ -1,28 +1,35 @@
 pub mod camera;
 pub mod device;
+pub mod mesh_batch;
 pub mod mesh_data;
 pub mod surface;
 #[cfg(feature = "window")]
 pub mod window;
 
 pub use vulkano::{
-	instance::{ InstanceCreationError, Version },
+	instance::{InstanceCreationError, Version},
 	sync::GpuFuture,
 };
 
 use self::device::DeviceCtx;
+use crate::surface::SWAP_FORMAT;
 use log::info;
 use std::sync::Arc;
 use vulkano::{
-	device::{ Device, DeviceExtensions, Features, Queue },
-	instance::{ ApplicationInfo, Instance, InstanceExtensions, PhysicalDevice },
+	command_buffer::DynamicState,
+	device::{Device, DeviceExtensions, Features, Queue},
+	framebuffer::{RenderPassAbstract, Subpass},
+	instance::{ApplicationInfo, Instance, InstanceExtensions, PhysicalDevice},
+	pipeline::{GraphicsPipeline, GraphicsPipelineAbstract},
 	swapchain::Surface,
 };
 
 /// Root struct for this library. Any windows that are created using the same context will share some resources.
 pub struct Context {
 	instance: Arc<Instance>,
-	devices: Vec<Arc<DeviceCtx>>,
+	device: Arc<Device>,
+	queue: Arc<Queue>,
+	pipeline_3d: Pipeline3D,
 }
 impl Context {
 	pub fn new(name: Option<&str>, version: Option<Version>) -> Result<Self, InstanceCreationError> {
@@ -54,43 +61,82 @@ impl Context {
 			Err(_) => InstanceExtensions::none(),
 		};
 
-		Ok(Self { instance: Instance::new(Some(&app_info), &exts, None)?, devices: vec![] })
-	}
+		let instance = Instance::new(Some(&app_info), &exts, None)?;
 
-	fn device(&self) -> &Arc<Device> {
-		self.devices[0].device()
-	}
-
-	fn queue(&self) -> &Arc<Queue> {
-		self.devices[0].queue()
-	}
-
-	fn get_device_for_surface<T>(&mut self, surface: &Surface<T>) -> Arc<DeviceCtx> {
-		for device in &self.devices {
-			let qfam = device.queue().family();
-			if qfam.supports_graphics() && surface.is_supported(qfam).unwrap() {
-				return device.clone();
-			}
-		}
-
-		let pdevice = PhysicalDevice::enumerate(&self.instance).next().expect("no device available");
+		let pdevice = PhysicalDevice::enumerate(&instance).next().expect("no device available");
 		info!("Using device: {} ({:?})", pdevice.name(), pdevice.ty());
 
-		let qfam = pdevice.queue_families()
-			.find(|&q| q.supports_graphics() && surface.is_supported(q).unwrap())
-			.expect("failed to find a graphical queue family");
+		let qfam =
+			pdevice.queue_families().find(|&q| q.supports_graphics()).expect("failed to find a graphical queue family");
 
 		let (device, mut queues) = Device::new(
 			pdevice,
 			&Features::none(),
 			&DeviceExtensions { khr_swapchain: true, ..DeviceExtensions::none() },
-			[(qfam, 1.0)].iter().cloned()
-		).expect("failed to create device");
+			[(qfam, 1.0)].iter().cloned(),
+		)
+		.expect("failed to create device");
 		let queue = queues.next().unwrap();
 
-		let ret = DeviceCtx::new(device, queue);
-		self.devices.push(ret.clone());
-		ret
+		let pipeline_3d = Pipeline3D::new(&device);
+
+		Ok(Self { instance, device, queue, pipeline_3d })
+	}
+
+	fn device(&self) -> &Arc<Device> {
+		&self.device
+	}
+
+	fn pipeline_3d(&self) -> &Pipeline3D {
+		&self.pipeline_3d
+	}
+
+	fn queue(&self) -> &Arc<Queue> {
+		&self.queue
+	}
+}
+
+struct Pipeline3D {
+	render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
+	pipeline: Arc<dyn GraphicsPipelineAbstract>,
+}
+impl Pipeline3D {
+	pub fn new(device: &Arc<Device>) -> Self {
+		let render_pass = Arc::new(
+			vulkano::single_pass_renderpass!(
+				device.clone(),
+				attachments: {
+					color: { load: Clear, store: Store, format: SWAP_FORMAT, samples: 1, }
+				},
+				pass: { color: [color], depth_stencil: {} }
+			)
+			.unwrap(),
+		);
+
+		let vs = mesh_batch::vs::Shader::load(device.clone()).unwrap();
+		let fs = mesh_batch::fs::Shader::load(device.clone()).unwrap();
+
+		let pipeline = Arc::new(
+			GraphicsPipeline::start()
+				.vertex_input_single_buffer::<mesh_batch::Vertex>()
+				.vertex_shader(vs.main_entry_point(), ())
+				.triangle_list()
+				.viewports_dynamic_scissors_irrelevant(1)
+				.fragment_shader(fs.main_entry_point(), ())
+				.render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
+				.build(device.clone())
+				.unwrap(),
+		);
+
+		Self { render_pass, pipeline }
+	}
+
+	pub fn render_pass(&self) -> &Arc<dyn RenderPassAbstract + Send + Sync> {
+		&self.render_pass
+	}
+
+	pub fn pipeline(&self) -> &Arc<dyn GraphicsPipelineAbstract> {
+		&self.pipeline
 	}
 }
 

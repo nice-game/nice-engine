@@ -17,11 +17,7 @@ impl Window {
 		Ok(Self { surface })
 	}
 
-	pub fn draw(&mut self, ctx: &Context) {
-		self.surface.draw(ctx)
-	}
-
-	pub fn resize(&mut self, width: u32, height: u32) {
-		self.surface.resize(width, height)
+	pub fn surface(&mut self) -> &mut Surface<winit::Window> {
+		&mut self.surface
 	}
 }

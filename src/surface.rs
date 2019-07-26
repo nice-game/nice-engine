@@ -3,7 +3,8 @@ use std::{os::raw::c_ulong, sync::Arc};
 use vulkano::{
 	device::DeviceOwned,
 	format::Format,
-	image::SwapchainImage,
+	framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract},
+	image::{ImageViewAccess, SwapchainImage},
 	swapchain::{
 		acquire_next_image, AcquireError, PresentMode, Surface as VkSurface, SurfaceCreationError, SurfaceTransform,
 		Swapchain, SwapchainCreationError,
@@ -11,13 +12,16 @@ use vulkano::{
 	sync::{self, GpuFuture},
 };
 
-pub struct Surface<W = ()> {
+pub const SWAP_FORMAT: Format = Format::B8G8R8A8Srgb;
+
+pub struct Surface<W: Send + Sync + 'static = ()> {
 	surface: Arc<VkSurface<W>>,
 	swapchain: Arc<Swapchain<W>>,
 	images: Vec<Arc<SwapchainImage<W>>>,
 	prev_frame_end: Option<Box<dyn GpuFuture>>,
+	framebuffers_3d: Framebuffers3D,
 }
-impl<W: 'static> Surface<W> {
+impl<W: Send + Sync + 'static> Surface<W> {
 	#[cfg(feature = "window")]
 	pub fn from_vk(ctx: &mut Context, surface: Arc<VkSurface<W>>) -> Self {
 		Self::new_inner(ctx, surface)
@@ -59,6 +63,7 @@ impl<W: 'static> Surface<W> {
 
 		match self.swapchain.recreate_with_dimension(dimensions) {
 			Ok((swapchain, images)) => {
+				self.framebuffers_3d.recreate(&images);
 				self.swapchain = swapchain;
 				self.images = images;
 			},
@@ -70,16 +75,20 @@ impl<W: 'static> Surface<W> {
 		}
 	}
 
+	pub fn swapchain(&self) -> &Arc<Swapchain<W>> {
+		&self.swapchain
+	}
+
 	fn new_inner(ctx: &mut Context, surface: Arc<VkSurface<W>>) -> Self {
-		let device = ctx.get_device_for_surface(&surface);
-		let queue = device.queue();
-		let caps = surface.capabilities(queue.device().physical_device()).expect("failed to get surface capabilities");
+		let device = ctx.device();
+		let queue = ctx.queue();
+		let caps = surface.capabilities(device.physical_device()).expect("failed to get surface capabilities");
 
 		let (swapchain, images) = Swapchain::new(
-			queue.device().clone(),
+			device.clone(),
 			surface.clone(),
 			caps.min_image_count,
-			Format::B8G8R8A8Srgb,
+			SWAP_FORMAT,
 			caps.current_extent.unwrap(),
 			1,
 			caps.supported_usage_flags,
@@ -92,9 +101,11 @@ impl<W: 'static> Surface<W> {
 		)
 		.expect("failed to create swapchain");
 
-		let prev_frame_end = Some(Box::new(sync::now(device.device().clone())) as Box<dyn GpuFuture>);
+		let prev_frame_end = Some(Box::new(sync::now(device.clone())) as Box<dyn GpuFuture>);
 
-		Self { surface, swapchain, images, prev_frame_end }
+		let framebuffers_3d = Framebuffers3D::new(ctx.pipeline_3d().render_pass().clone(), &images);
+
+		Self { surface, swapchain, images, prev_frame_end, framebuffers_3d }
 	}
 }
 impl Surface<()> {
@@ -120,5 +131,36 @@ impl Surface<()> {
 		surface: *const S,
 	) -> Result<Self, SurfaceCreationError> {
 		Ok(Self::new_inner(ctx, VkSurface::from_wayland(ctx.instance.clone(), display, surface, ())?))
+	}
+}
+
+fn create_framebuffers<T: ImageViewAccess + Send + Sync + 'static>(
+	render_pass: &Arc<dyn RenderPassAbstract + Send + Sync>,
+	images: &Vec<Arc<T>>,
+) -> Vec<Arc<dyn FramebufferAbstract + Send + Sync>> {
+	images
+		.iter()
+		.map(move |image| {
+			Arc::new(Framebuffer::start(render_pass.clone()).add(image.clone()).unwrap().build().unwrap())
+				as Arc<dyn FramebufferAbstract + Send + Sync>
+		})
+		.collect()
+}
+
+struct Framebuffers3D {
+	render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
+	framebuffers: Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
+}
+impl Framebuffers3D {
+	fn new<T: ImageViewAccess + Send + Sync + 'static>(
+		render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
+		images: &Vec<Arc<T>>,
+	) -> Self {
+		let framebuffers = create_framebuffers(&render_pass, images);
+		Self { render_pass, framebuffers }
+	}
+
+	fn recreate<T: ImageViewAccess + Send + Sync + 'static>(&mut self, images: &Vec<Arc<T>>) {
+		self.framebuffers = create_framebuffers(&self.render_pass, images);
 	}
 }
