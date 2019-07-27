@@ -1,18 +1,9 @@
-use crate::{surface::SWAP_FORMAT, Context};
-use std::sync::Arc;
-use vulkano::{
-	command_buffer::DynamicState,
-	framebuffer::{RenderPassAbstract, Subpass},
-	pipeline::{GraphicsPipeline, GraphicsPipelineAbstract},
-};
+use crate::Context;
 
-pub struct MeshBatch {
-}
+pub struct MeshBatch {}
 impl MeshBatch {
-	pub fn new(ctx: &Context) -> Self {
-
-
-		Self { }
+	pub fn new(_ctx: &Context) -> Self {
+		Self {}
 	}
 }
 

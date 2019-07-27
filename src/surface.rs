@@ -1,10 +1,11 @@
-use crate::Context;
+use crate::{mesh_batch, Context};
 use std::{os::raw::c_ulong, sync::Arc};
 use vulkano::{
 	device::DeviceOwned,
 	format::Format,
-	framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract},
+	framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass},
 	image::{ImageViewAccess, SwapchainImage},
+	pipeline::{viewport::Viewport, GraphicsPipeline, GraphicsPipelineAbstract},
 	swapchain::{
 		acquire_next_image, AcquireError, PresentMode, Surface as VkSurface, SurfaceCreationError, SurfaceTransform,
 		Swapchain, SwapchainCreationError,
@@ -18,8 +19,8 @@ pub struct Surface<W: Send + Sync + 'static = ()> {
 	surface: Arc<VkSurface<W>>,
 	swapchain: Arc<Swapchain<W>>,
 	images: Vec<Arc<SwapchainImage<W>>>,
+	framebuffers_3d: Pipeline3D,
 	prev_frame_end: Option<Box<dyn GpuFuture>>,
-	framebuffers_3d: Framebuffers3D,
 }
 impl<W: Send + Sync + 'static> Surface<W> {
 	#[cfg(feature = "window")]
@@ -63,7 +64,8 @@ impl<W: Send + Sync + 'static> Surface<W> {
 
 		match self.swapchain.recreate_with_dimension(dimensions) {
 			Ok((swapchain, images)) => {
-				self.framebuffers_3d.recreate(&images);
+				let dimensions = [dimensions[0] as f32, dimensions[1] as f32];
+				self.framebuffers_3d.recreate(&images, dimensions);
 				self.swapchain = swapchain;
 				self.images = images;
 			},
@@ -84,12 +86,14 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		let queue = ctx.queue();
 		let caps = surface.capabilities(device.physical_device()).expect("failed to get surface capabilities");
 
+		let dims = caps.current_extent.unwrap();
+
 		let (swapchain, images) = Swapchain::new(
 			device.clone(),
 			surface.clone(),
 			caps.min_image_count,
 			SWAP_FORMAT,
-			caps.current_extent.unwrap(),
+			dims,
 			1,
 			caps.supported_usage_flags,
 			queue,
@@ -101,11 +105,11 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		)
 		.expect("failed to create swapchain");
 
+		let dimensions = [dims[0] as f32, dims[1] as f32];
+		let framebuffers_3d = Pipeline3D::new(ctx.render_pass_3d().clone(), &images, dimensions);
 		let prev_frame_end = Some(Box::new(sync::now(device.clone())) as Box<dyn GpuFuture>);
 
-		let framebuffers_3d = Framebuffers3D::new(ctx.pipeline_3d().render_pass().clone(), &images);
-
-		Self { surface, swapchain, images, prev_frame_end, framebuffers_3d }
+		Self { surface, swapchain, images, framebuffers_3d, prev_frame_end }
 	}
 }
 impl Surface<()> {
@@ -147,20 +151,45 @@ fn create_framebuffers<T: ImageViewAccess + Send + Sync + 'static>(
 		.collect()
 }
 
-struct Framebuffers3D {
+fn create_pipeline_3d(
+	render_pass: &Arc<dyn RenderPassAbstract + Send + Sync>,
+	dimensions: [f32; 2],
+) -> Arc<dyn GraphicsPipelineAbstract> {
+	let device = render_pass.device();
+	let vs = mesh_batch::vs::Shader::load(device.clone()).unwrap();
+	let fs = mesh_batch::fs::Shader::load(device.clone()).unwrap();
+
+	Arc::new(
+		GraphicsPipeline::start()
+			.vertex_input_single_buffer::<mesh_batch::Vertex>()
+			.vertex_shader(vs.main_entry_point(), ())
+			.triangle_list()
+			.viewports(vec![Viewport { origin: [0.0, 0.0], dimensions, depth_range: 0.0..1.0 }])
+			.fragment_shader(fs.main_entry_point(), ())
+			.render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
+			.build(device.clone())
+			.unwrap(),
+	)
+}
+
+struct Pipeline3D {
 	render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
+	pipeline: Arc<dyn GraphicsPipelineAbstract>,
 	framebuffers: Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
 }
-impl Framebuffers3D {
+impl Pipeline3D {
 	fn new<T: ImageViewAccess + Send + Sync + 'static>(
 		render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
 		images: &Vec<Arc<T>>,
+		dimensions: [f32; 2],
 	) -> Self {
+		let pipeline = create_pipeline_3d(&render_pass, dimensions);
 		let framebuffers = create_framebuffers(&render_pass, images);
-		Self { render_pass, framebuffers }
+		Pipeline3D { render_pass, pipeline, framebuffers }
 	}
 
-	fn recreate<T: ImageViewAccess + Send + Sync + 'static>(&mut self, images: &Vec<Arc<T>>) {
+	fn recreate<T: ImageViewAccess + Send + Sync + 'static>(&mut self, images: &Vec<Arc<T>>, dimensions: [f32; 2]) {
+		self.pipeline = create_pipeline_3d(&self.render_pass, dimensions);
 		self.framebuffers = create_framebuffers(&self.render_pass, images);
 	}
 }

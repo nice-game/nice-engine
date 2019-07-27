@@ -1,5 +1,4 @@
 pub mod camera;
-pub mod device;
 pub mod mesh_batch;
 pub mod mesh_data;
 pub mod surface;
@@ -11,17 +10,13 @@ pub use vulkano::{
 	sync::GpuFuture,
 };
 
-use self::device::DeviceCtx;
 use crate::surface::SWAP_FORMAT;
 use log::info;
 use std::sync::Arc;
 use vulkano::{
-	command_buffer::DynamicState,
 	device::{Device, DeviceExtensions, Features, Queue},
-	framebuffer::{RenderPassAbstract, Subpass},
+	framebuffer::RenderPassAbstract,
 	instance::{ApplicationInfo, Instance, InstanceExtensions, PhysicalDevice},
-	pipeline::{GraphicsPipeline, GraphicsPipelineAbstract},
-	swapchain::Surface,
 };
 
 /// Root struct for this library. Any windows that are created using the same context will share some resources.
@@ -29,7 +24,7 @@ pub struct Context {
 	instance: Arc<Instance>,
 	device: Arc<Device>,
 	queue: Arc<Queue>,
-	pipeline_3d: Pipeline3D,
+	render_pass_3d: Arc<dyn RenderPassAbstract + Send + Sync>,
 }
 impl Context {
 	pub fn new(name: Option<&str>, version: Option<Version>) -> Result<Self, InstanceCreationError> {
@@ -78,31 +73,7 @@ impl Context {
 		.expect("failed to create device");
 		let queue = queues.next().unwrap();
 
-		let pipeline_3d = Pipeline3D::new(&device);
-
-		Ok(Self { instance, device, queue, pipeline_3d })
-	}
-
-	fn device(&self) -> &Arc<Device> {
-		&self.device
-	}
-
-	fn pipeline_3d(&self) -> &Pipeline3D {
-		&self.pipeline_3d
-	}
-
-	fn queue(&self) -> &Arc<Queue> {
-		&self.queue
-	}
-}
-
-struct Pipeline3D {
-	render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-	pipeline: Arc<dyn GraphicsPipelineAbstract>,
-}
-impl Pipeline3D {
-	pub fn new(device: &Arc<Device>) -> Self {
-		let render_pass = Arc::new(
+		let render_pass_3d = Arc::new(
 			vulkano::single_pass_renderpass!(
 				device.clone(),
 				attachments: {
@@ -113,30 +84,19 @@ impl Pipeline3D {
 			.unwrap(),
 		);
 
-		let vs = mesh_batch::vs::Shader::load(device.clone()).unwrap();
-		let fs = mesh_batch::fs::Shader::load(device.clone()).unwrap();
-
-		let pipeline = Arc::new(
-			GraphicsPipeline::start()
-				.vertex_input_single_buffer::<mesh_batch::Vertex>()
-				.vertex_shader(vs.main_entry_point(), ())
-				.triangle_list()
-				.viewports_dynamic_scissors_irrelevant(1)
-				.fragment_shader(fs.main_entry_point(), ())
-				.render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
-				.build(device.clone())
-				.unwrap(),
-		);
-
-		Self { render_pass, pipeline }
+		Ok(Self { instance, device, queue, render_pass_3d })
 	}
 
-	pub fn render_pass(&self) -> &Arc<dyn RenderPassAbstract + Send + Sync> {
-		&self.render_pass
+	fn device(&self) -> &Arc<Device> {
+		&self.device
 	}
 
-	pub fn pipeline(&self) -> &Arc<dyn GraphicsPipelineAbstract> {
-		&self.pipeline
+	fn render_pass_3d(&self) -> &Arc<dyn RenderPassAbstract + Send + Sync> {
+		&self.render_pass_3d
+	}
+
+	fn queue(&self) -> &Arc<Queue> {
+		&self.queue
 	}
 }
 
