@@ -1,19 +1,19 @@
 use crate::mesh::Mesh;
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashSet, sync::{Arc, Mutex}};
 
 pub struct MeshBatch {
-	meshes: HashSet<Arc<Mesh>>,
+	meshes: Mutex<HashSet<Arc<Mesh>>>,
 }
 impl MeshBatch {
-	pub fn new() -> Self {
-		Self { meshes: HashSet::new() }
+	pub fn new() -> Arc<Self> {
+		Arc::new(Self { meshes: Mutex::default() })
 	}
 
-	pub fn insert_mesh(&mut self, mesh: Arc<Mesh>) {
-		self.meshes.insert(mesh);
+	pub fn insert_mesh(&self, mesh: Arc<Mesh>) {
+		self.meshes.lock().unwrap().insert(mesh);
 	}
 
-	pub fn meshes(&self) -> &HashSet<Arc<Mesh>> {
+	pub fn meshes(&self) -> &Mutex<HashSet<Arc<Mesh>>> {
 		&self.meshes
 	}
 }

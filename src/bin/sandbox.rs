@@ -1,4 +1,5 @@
 use nice_engine::{
+	camera::Camera,
 	mesh::Mesh,
 	mesh_batch::MeshBatch,
 	mesh_data::{MeshData, Pntl_32F},
@@ -28,8 +29,11 @@ pub fn main() {
 	let mesh = Mesh::new();
 	mesh.set_mesh_data(Some(triangle));
 
-	let mut batch = MeshBatch::new();
+	let batch = MeshBatch::new();
 	batch.insert_mesh(mesh);
+
+	let mut cam = Camera::new();
+	cam.set_mesh_batch(Some(batch.clone()));
 
 	loop {
 		let mut done = false;
@@ -44,7 +48,7 @@ pub fn main() {
 			_ => (),
 		});
 
-		win.surface().draw(&batch);
+		win.surface().draw(&cam);
 
 		if done {
 			break;

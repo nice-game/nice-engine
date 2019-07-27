@@ -20,6 +20,10 @@ impl Camera {
 		self.zfar = zfar;
 	}
 
+	pub fn mesh_batch(&self) -> Option<&Arc<MeshBatch>> {
+		self.mesh_batch.as_ref()
+	}
+
 	pub fn set_mesh_batch(&mut self, mesh_batch: Option<Arc<MeshBatch>>) {
 		self.mesh_batch = mesh_batch;
 	}
