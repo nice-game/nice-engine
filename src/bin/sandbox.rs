@@ -12,7 +12,6 @@ pub fn main() {
 	let mut ctx = Context::new(Some("nIce Engine"), None).unwrap();
 	let mut events = EventsLoop::new();
 	let mut win = Window::new(&mut ctx, &events).unwrap();
-	let batch = MeshBatch::new(&ctx);
 
 	let (triangle, triangle_future) = MeshData::new(
 		&ctx,
@@ -26,8 +25,11 @@ pub fn main() {
 	.unwrap();
 	triangle_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 
-	let mut mesh = Mesh::new(batch);
+	let mesh = Mesh::new();
 	mesh.set_mesh_data(Some(triangle));
+
+	let mut batch = MeshBatch::new();
+	batch.insert_mesh(mesh);
 
 	loop {
 		let mut done = false;
@@ -42,7 +44,7 @@ pub fn main() {
 			_ => (),
 		});
 
-		win.surface().draw(mesh.mesh_data().unwrap());
+		win.surface().draw(&batch);
 
 		if done {
 			break;

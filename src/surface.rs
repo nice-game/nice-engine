@@ -1,7 +1,4 @@
-use crate::{
-	mesh_data::{self, MeshData},
-	Context,
-};
+use crate::{mesh_batch::MeshBatch, mesh_data, Context};
 use std::{os::raw::c_ulong, sync::Arc};
 use vulkano::{
 	command_buffer::AutoCommandBufferBuilder,
@@ -34,7 +31,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		Self::new_inner(ctx, surface)
 	}
 
-	pub fn draw(&mut self, data: &Arc<MeshData>) {
+	pub fn draw(&mut self, batch: &MeshBatch) {
 		let mut prev_frame_end = self.prev_frame_end.take().unwrap();
 		prev_frame_end.cleanup_finished();
 
@@ -49,14 +46,19 @@ impl<W: Send + Sync + 'static> Surface<W> {
 
 		let clear_values = vec![[0.0, 0.0, 0.25, 1.0].into()];
 
-		let command_buffer = AutoCommandBufferBuilder::primary_one_time_submit(self.device.clone(), self.queue.family()).unwrap()
-			.begin_render_pass(self.pipeline_3d.framebuffers[image_num].clone(), false, clear_values)
-			.unwrap()
-			.draw(self.pipeline_3d.pipeline.clone(), &Default::default(), vec![data.vertices().clone()], (), ())
-			.unwrap()
-			.end_render_pass()
-			.unwrap()
-			.build().unwrap();
+		let mut command_buffer =
+			AutoCommandBufferBuilder::primary_one_time_submit(self.device.clone(), self.queue.family())
+				.unwrap()
+				.begin_render_pass(self.pipeline_3d.framebuffers[image_num].clone(), false, clear_values)
+				.unwrap();
+		for mesh in batch.meshes() {
+			let verts = mesh.mesh_data().unwrap().vertices().clone();
+			command_buffer = command_buffer
+				.draw(self.pipeline_3d.pipeline.clone(), &Default::default(), vec![verts], (), ())
+				.unwrap();
+		}
+
+		let command_buffer = command_buffer.end_render_pass().unwrap().build().unwrap();
 
 		let future = prev_frame_end
 			.join(acquire_future)

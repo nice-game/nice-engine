@@ -7,6 +7,7 @@ use vulkano::{
 	sync::GpuFuture,
 };
 
+#[derive(Clone)]
 pub struct MeshData {
 	vertices: Arc<dyn BufferAccess + Send + Sync>,
 	indices: Arc<dyn BufferAccess + Send + Sync>,
