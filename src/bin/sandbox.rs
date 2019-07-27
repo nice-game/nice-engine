@@ -20,7 +20,7 @@ pub fn main() {
 			_ => (),
 		});
 
-		win.surface().draw(&ctx);
+		win.surface().draw();
 
 		if done {
 			break;

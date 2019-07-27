@@ -1,7 +1,7 @@
 use crate::{mesh_batch, Context};
 use std::{os::raw::c_ulong, sync::Arc};
 use vulkano::{
-	device::DeviceOwned,
+	device::{Device, DeviceOwned, Queue},
 	format::Format,
 	framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass},
 	image::{ImageViewAccess, SwapchainImage},
@@ -16,6 +16,8 @@ use vulkano::{
 pub const SWAP_FORMAT: Format = Format::B8G8R8A8Srgb;
 
 pub struct Surface<W: Send + Sync + 'static = ()> {
+	device: Arc<Device>,
+	queue: Arc<Queue>,
 	surface: Arc<VkSurface<W>>,
 	swapchain: Arc<Swapchain<W>>,
 	images: Vec<Arc<SwapchainImage<W>>>,
@@ -28,14 +30,14 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		Self::new_inner(ctx, surface)
 	}
 
-	pub fn draw(&mut self, ctx: &Context) {
+	pub fn draw(&mut self) {
 		let mut prev_frame_end = self.prev_frame_end.take().unwrap();
 		prev_frame_end.cleanup_finished();
 
 		let (image_num, acquire_future) = match acquire_next_image(self.swapchain.clone(), None) {
 			Ok(r) => r,
 			Err(AcquireError::OutOfDate) => {
-				self.prev_frame_end = Some(Box::new(sync::now(ctx.device().clone())) as Box<_>);
+				self.prev_frame_end = Some(Box::new(sync::now(self.device.clone())) as Box<_>);
 				return;
 			},
 			Err(err) => panic!("{:?}", err),
@@ -43,13 +45,13 @@ impl<W: Send + Sync + 'static> Surface<W> {
 
 		let future = prev_frame_end
 			.join(acquire_future)
-			.then_swapchain_present(ctx.queue().clone(), self.swapchain.clone(), image_num)
+			.then_swapchain_present(self.queue.clone(), self.swapchain.clone(), image_num)
 			.then_signal_fence_and_flush();
 		self.prev_frame_end = Some(match future {
 			Ok(future) => Box::new(future) as Box<_>,
 			Err(e) => {
 				println!("{:?}", e);
-				Box::new(sync::now(ctx.device().clone())) as Box<_>
+				Box::new(sync::now(self.device.clone())) as Box<_>
 			},
 		});
 	}
@@ -82,8 +84,8 @@ impl<W: Send + Sync + 'static> Surface<W> {
 	}
 
 	fn new_inner(ctx: &mut Context, surface: Arc<VkSurface<W>>) -> Self {
-		let device = ctx.device();
-		let queue = ctx.queue();
+		let device = ctx.device().clone();
+		let queue = ctx.queue().clone();
 		let caps = surface.capabilities(device.physical_device()).expect("failed to get surface capabilities");
 
 		let dims = caps.current_extent.unwrap();
@@ -96,7 +98,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 			dims,
 			1,
 			caps.supported_usage_flags,
-			queue,
+			&queue,
 			SurfaceTransform::Identity,
 			caps.supported_composite_alpha.iter().next().unwrap(),
 			PresentMode::Fifo,
@@ -109,7 +111,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		let framebuffers_3d = Pipeline3D::new(ctx.render_pass_3d().clone(), &images, dimensions);
 		let prev_frame_end = Some(Box::new(sync::now(device.clone())) as Box<dyn GpuFuture>);
 
-		Self { surface, swapchain, images, framebuffers_3d, prev_frame_end }
+		Self { device, queue, surface, swapchain, images, framebuffers_3d, prev_frame_end }
 	}
 }
 impl Surface<()> {
