@@ -1,4 +1,4 @@
-use crate::{mesh_batch, Context};
+use crate::{mesh_data, Context};
 use std::{os::raw::c_ulong, sync::Arc};
 use vulkano::{
 	command_buffer::AutoCommandBufferBuilder,
@@ -172,12 +172,12 @@ fn create_pipeline_3d(
 	dimensions: [f32; 2],
 ) -> Arc<dyn GraphicsPipelineAbstract> {
 	let device = render_pass.device();
-	let vs = mesh_batch::vs::Shader::load(device.clone()).unwrap();
-	let fs = mesh_batch::fs::Shader::load(device.clone()).unwrap();
+	let vs = vs3d::Shader::load(device.clone()).unwrap();
+	let fs = fs3d::Shader::load(device.clone()).unwrap();
 
 	Arc::new(
 		GraphicsPipeline::start()
-			.vertex_input_single_buffer::<mesh_batch::Vertex>()
+			.vertex_input_single_buffer::<mesh_data::Pntl_32F>()
 			.vertex_shader(vs.main_entry_point(), ())
 			.triangle_list()
 			.viewports(vec![Viewport { origin: [0.0, 0.0], dimensions, depth_range: 0.0..1.0 }])
@@ -207,5 +207,34 @@ impl Pipeline3D {
 	fn recreate<T: ImageViewAccess + Send + Sync + 'static>(&mut self, images: &Vec<Arc<T>>, dimensions: [f32; 2]) {
 		self.pipeline = create_pipeline_3d(&self.render_pass, dimensions);
 		self.framebuffers = create_framebuffers(&self.render_pass, images);
+	}
+}
+
+pub(crate) mod vs3d {
+	vulkano_shaders::shader! {
+		ty: "vertex",
+		src: "
+#version 450
+layout(location = 0) in vec3 pos;
+layout(location = 1) in vec3 nor;
+layout(location = 2) in vec2 tex;
+layout(location = 3) in vec2 lmap;
+
+void main() {
+	gl_Position = vec4(pos, 1.0);
+}"
+	}
+}
+
+pub(crate) mod fs3d {
+	vulkano_shaders::shader! {
+		ty: "fragment",
+		src: "
+#version 450
+layout(location = 0) out vec4 f_color;
+void main() {
+	f_color = vec4(1.0, 0.0, 0.0, 1.0);
+}
+"
 	}
 }
