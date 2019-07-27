@@ -21,6 +21,22 @@ impl Camera {
 		self.zfar = zfar;
 	}
 
+	pub fn aspect(&self) -> f32 {
+		self.aspect
+	}
+
+	pub fn fovx(&self) -> f32 {
+		self.fovx
+	}
+
+	pub fn znear(&self) -> f32 {
+		self.znear
+	}
+
+	pub fn zfar(&self) -> f32 {
+		self.zfar
+	}
+
 	pub fn mesh_batch(&self) -> Option<&Arc<MeshBatch>> {
 		self.mesh_batch.as_ref()
 	}

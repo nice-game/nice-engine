@@ -54,6 +54,10 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		for mesh in &*cam.mesh_batch().unwrap().meshes().lock().unwrap() {
 			let verts = mesh.mesh_data().unwrap().vertices().clone();
 			let pc = vs3d::ty::PushConsts {
+				aspect: cam.aspect(),
+				fovx: cam.fovx(),
+				znear: cam.znear(),
+				zfar: cam.zfar(),
 				pos: cam.transform().pos.into(),
 				rot: cam.transform().rot.into(),
 				_dummy0: unsafe { std::mem::uninitialized() },
@@ -231,6 +235,10 @@ layout(location = 2) in vec2 tex;
 layout(location = 3) in vec2 lmap;
 
 layout(push_constant) uniform PushConsts {
+	float aspect;
+	float fovx;
+	float znear;
+	float zfar;
 	vec3 pos;
 	vec4 rot;
 } pc;
