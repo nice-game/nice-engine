@@ -1,4 +1,7 @@
-use crate::{mesh_data, Context};
+use crate::{
+	mesh_data::{self, MeshData},
+	Context,
+};
 use std::{os::raw::c_ulong, sync::Arc};
 use vulkano::{
 	command_buffer::AutoCommandBufferBuilder,
@@ -31,7 +34,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		Self::new_inner(ctx, surface)
 	}
 
-	pub fn draw(&mut self) {
+	pub fn draw(&mut self, data: &MeshData) {
 		let mut prev_frame_end = self.prev_frame_end.take().unwrap();
 		prev_frame_end.cleanup_finished();
 
@@ -49,8 +52,8 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		let command_buffer = AutoCommandBufferBuilder::primary_one_time_submit(self.device.clone(), self.queue.family()).unwrap()
 			.begin_render_pass(self.pipeline_3d.framebuffers[image_num].clone(), false, clear_values)
 			.unwrap()
-			// .draw(self.pipeline_3d.pipeline.clone(), &Default::default()(), vertex_buffer.clone(), (), ())
-			// .unwrap()
+			.draw(self.pipeline_3d.pipeline.clone(), &Default::default(), vec![data.vertices().clone()], (), ())
+			.unwrap()
 			.end_render_pass()
 			.unwrap()
 			.build().unwrap();
@@ -170,7 +173,7 @@ fn create_framebuffers<T: ImageViewAccess + Send + Sync + 'static>(
 fn create_pipeline_3d(
 	render_pass: &Arc<dyn RenderPassAbstract + Send + Sync>,
 	dimensions: [f32; 2],
-) -> Arc<dyn GraphicsPipelineAbstract> {
+) -> Arc<dyn GraphicsPipelineAbstract + Send + Sync> {
 	let device = render_pass.device();
 	let vs = vs3d::Shader::load(device.clone()).unwrap();
 	let fs = fs3d::Shader::load(device.clone()).unwrap();
@@ -190,7 +193,7 @@ fn create_pipeline_3d(
 
 struct Pipeline3D {
 	render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-	pipeline: Arc<dyn GraphicsPipelineAbstract>,
+	pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
 	framebuffers: Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
 }
 impl Pipeline3D {

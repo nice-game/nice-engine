@@ -4,6 +4,7 @@ use nice_engine::{
 	window::Window,
 	Context,
 };
+use vulkano::sync::GpuFuture;
 use winit::{dpi::LogicalSize, Event, EventsLoop, WindowEvent};
 
 pub fn main() {
@@ -11,7 +12,7 @@ pub fn main() {
 	let mut events = EventsLoop::new();
 	let mut win = Window::new(&mut ctx, &events).unwrap();
 
-	let triangle = MeshData::new(
+	let (triangle, triangle_future) = MeshData::new(
 		&ctx,
 		[
 			Pntl_32F { pos: [-0.5, -0.25, 0.0], nor: [0.0; 3], tex: [0.0; 2], lmap: [0.0; 2] },
@@ -19,7 +20,9 @@ pub fn main() {
 			Pntl_32F { pos: [0.25, -0.1, 0.0], nor: [0.0; 3], tex: [0.0; 2], lmap: [0.0; 2] },
 		],
 		[0, 1, 2],
-	);
+	)
+	.unwrap();
+	triangle_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 
 	let _mb = MeshBatch::new(&ctx);
 
@@ -36,7 +39,7 @@ pub fn main() {
 			_ => (),
 		});
 
-		win.surface().draw();
+		win.surface().draw(&triangle);
 
 		if done {
 			break;

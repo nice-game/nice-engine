@@ -8,8 +8,8 @@ use vulkano::{
 };
 
 pub struct MeshData {
-	vertices: Arc<dyn BufferAccess>,
-	indices: Arc<dyn BufferAccess>,
+	vertices: Arc<dyn BufferAccess + Send + Sync>,
+	indices: Arc<dyn BufferAccess + Send + Sync>,
 	queue: Arc<Queue>,
 }
 impl MeshData {
@@ -24,10 +24,8 @@ impl MeshData {
 		let (indices, indices_future) =
 			ImmutableBuffer::from_data(index_data, BufferUsage::index_buffer(), ctx.queue().clone())?;
 
-		Ok((
-			Self { vertices: vertices, indices: indices, queue: ctx.queue().clone() },
-			vertices_future.join(indices_future),
-		))
+		let this = Self { vertices, indices, queue: ctx.queue().clone() };
+		Ok((this, vertices_future.join(indices_future)))
 	}
 
 	pub fn set_vertex_data<T>(&mut self, data: T) -> Result<impl GpuFuture, DeviceMemoryAllocError>
@@ -46,6 +44,14 @@ impl MeshData {
 		self.indices = indices;
 
 		Ok(indices_future)
+	}
+
+	pub fn vertices(&self) -> &Arc<dyn BufferAccess + Send + Sync> {
+		&self.vertices
+	}
+
+	pub fn indices(&self) -> &Arc<dyn BufferAccess + Send + Sync> {
+		&self.indices
 	}
 }
 
