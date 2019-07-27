@@ -1,6 +1,7 @@
 use crate::{mesh_batch, Context};
 use std::{os::raw::c_ulong, sync::Arc};
 use vulkano::{
+	command_buffer::AutoCommandBufferBuilder,
 	device::{Device, DeviceOwned, Queue},
 	format::Format,
 	framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass},
@@ -21,7 +22,7 @@ pub struct Surface<W: Send + Sync + 'static = ()> {
 	surface: Arc<VkSurface<W>>,
 	swapchain: Arc<Swapchain<W>>,
 	images: Vec<Arc<SwapchainImage<W>>>,
-	framebuffers_3d: Pipeline3D,
+	pipeline_3d: Pipeline3D,
 	prev_frame_end: Option<Box<dyn GpuFuture>>,
 }
 impl<W: Send + Sync + 'static> Surface<W> {
@@ -43,8 +44,21 @@ impl<W: Send + Sync + 'static> Surface<W> {
 			Err(err) => panic!("{:?}", err),
 		};
 
+		let clear_values = vec![[0.0, 0.0, 0.25, 1.0].into()];
+
+		let command_buffer = AutoCommandBufferBuilder::primary_one_time_submit(self.device.clone(), self.queue.family()).unwrap()
+			.begin_render_pass(self.pipeline_3d.framebuffers[image_num].clone(), false, clear_values)
+			.unwrap()
+			// .draw(self.pipeline_3d.pipeline.clone(), &Default::default()(), vertex_buffer.clone(), (), ())
+			// .unwrap()
+			.end_render_pass()
+			.unwrap()
+			.build().unwrap();
+
 		let future = prev_frame_end
 			.join(acquire_future)
+			.then_execute(self.queue.clone(), command_buffer)
+			.unwrap()
 			.then_swapchain_present(self.queue.clone(), self.swapchain.clone(), image_num)
 			.then_signal_fence_and_flush();
 		self.prev_frame_end = Some(match future {
@@ -67,7 +81,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		match self.swapchain.recreate_with_dimension(dimensions) {
 			Ok((swapchain, images)) => {
 				let dimensions = [dimensions[0] as f32, dimensions[1] as f32];
-				self.framebuffers_3d.recreate(&images, dimensions);
+				self.pipeline_3d.recreate(&images, dimensions);
 				self.swapchain = swapchain;
 				self.images = images;
 			},
@@ -108,10 +122,10 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		.expect("failed to create swapchain");
 
 		let dimensions = [dims[0] as f32, dims[1] as f32];
-		let framebuffers_3d = Pipeline3D::new(ctx.render_pass_3d().clone(), &images, dimensions);
+		let pipeline_3d = Pipeline3D::new(ctx.render_pass_3d().clone(), &images, dimensions);
 		let prev_frame_end = Some(Box::new(sync::now(device.clone())) as Box<dyn GpuFuture>);
 
-		Self { device, queue, surface, swapchain, images, framebuffers_3d, prev_frame_end }
+		Self { device, queue, surface, swapchain, images, pipeline_3d, prev_frame_end }
 	}
 }
 impl Surface<()> {
