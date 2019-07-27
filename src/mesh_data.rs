@@ -1,7 +1,7 @@
 use crate::Context;
 use std::sync::Arc;
 use vulkano::{
-	buffer::{ BufferAccess, BufferUsage, ImmutableBuffer },
+	buffer::{BufferAccess, BufferUsage, ImmutableBuffer},
 	device::Queue,
 	memory::DeviceMemoryAllocError,
 	sync::GpuFuture,
@@ -17,19 +17,24 @@ impl MeshData {
 		ctx: &Context,
 		vertex_data: V,
 		index_data: I,
-	) -> Result<(Self, impl GpuFuture), DeviceMemoryAllocError>
-	where V: Send + Sync + 'static, I: Send + Sync + 'static {
+	) -> Result<(Arc<Self>, impl GpuFuture), DeviceMemoryAllocError>
+	where
+		V: Send + Sync + 'static,
+		I: Send + Sync + 'static,
+	{
 		let (vertices, vertices_future) =
 			ImmutableBuffer::from_data(vertex_data, BufferUsage::vertex_buffer(), ctx.queue().clone())?;
 		let (indices, indices_future) =
 			ImmutableBuffer::from_data(index_data, BufferUsage::index_buffer(), ctx.queue().clone())?;
 
-		let this = Self { vertices, indices, queue: ctx.queue().clone() };
-		Ok((this, vertices_future.join(indices_future)))
+		let ret = Arc::new(Self { vertices, indices, queue: ctx.queue().clone() });
+		Ok((ret, vertices_future.join(indices_future)))
 	}
 
 	pub fn set_vertex_data<T>(&mut self, data: T) -> Result<impl GpuFuture, DeviceMemoryAllocError>
-	where T: Send + Sync + 'static {
+	where
+		T: Send + Sync + 'static,
+	{
 		let (vertices, vertices_future) =
 			ImmutableBuffer::from_data(data, BufferUsage::vertex_buffer(), self.queue.clone())?;
 		self.vertices = vertices;
@@ -38,7 +43,9 @@ impl MeshData {
 	}
 
 	pub fn set_index_data<T>(&mut self, data: T) -> Result<impl GpuFuture, DeviceMemoryAllocError>
-	where T: Send + Sync + 'static {
+	where
+		T: Send + Sync + 'static,
+	{
 		let (indices, indices_future) =
 			ImmutableBuffer::from_data(data, BufferUsage::vertex_buffer(), self.queue.clone())?;
 		self.indices = indices;

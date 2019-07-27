@@ -1,4 +1,5 @@
 use nice_engine::{
+	mesh::Mesh,
 	mesh_batch::MeshBatch,
 	mesh_data::{MeshData, Pntl_32F},
 	window::Window,
@@ -11,6 +12,7 @@ pub fn main() {
 	let mut ctx = Context::new(Some("nIce Engine"), None).unwrap();
 	let mut events = EventsLoop::new();
 	let mut win = Window::new(&mut ctx, &events).unwrap();
+	let batch = MeshBatch::new(&ctx);
 
 	let (triangle, triangle_future) = MeshData::new(
 		&ctx,
@@ -24,7 +26,8 @@ pub fn main() {
 	.unwrap();
 	triangle_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 
-	let _mb = MeshBatch::new(&ctx);
+	let mut mesh = Mesh::new(batch);
+	mesh.set_mesh_data(Some(triangle));
 
 	loop {
 		let mut done = false;
@@ -39,7 +42,7 @@ pub fn main() {
 			_ => (),
 		});
 
-		win.surface().draw(&triangle);
+		win.surface().draw(mesh.mesh_data().unwrap());
 
 		if done {
 			break;

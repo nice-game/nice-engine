@@ -34,7 +34,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		Self::new_inner(ctx, surface)
 	}
 
-	pub fn draw(&mut self, data: &MeshData) {
+	pub fn draw(&mut self, data: &Arc<MeshData>) {
 		let mut prev_frame_end = self.prev_frame_end.take().unwrap();
 		prev_frame_end.cleanup_finished();
 

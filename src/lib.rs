@@ -1,4 +1,5 @@
 pub mod camera;
+pub mod mesh;
 pub mod mesh_batch;
 pub mod mesh_data;
 pub mod surface;
