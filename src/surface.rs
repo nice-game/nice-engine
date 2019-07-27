@@ -53,8 +53,13 @@ impl<W: Send + Sync + 'static> Surface<W> {
 				.unwrap();
 		for mesh in &*cam.mesh_batch().unwrap().meshes().lock().unwrap() {
 			let verts = mesh.mesh_data().unwrap().vertices().clone();
+			let pc = vs3d::ty::PushConsts {
+				pos: cam.transform().pos.into(),
+				rot: cam.transform().rot.into(),
+				_dummy0: [0; 4],
+			};
 			command_buffer = command_buffer
-				.draw(self.pipeline_3d.pipeline.clone(), &Default::default(), vec![verts], (), ())
+				.draw(self.pipeline_3d.pipeline.clone(), &Default::default(), vec![verts], (), pc)
 				.unwrap();
 		}
 
@@ -225,8 +230,13 @@ layout(location = 1) in vec3 nor;
 layout(location = 2) in vec2 tex;
 layout(location = 3) in vec2 lmap;
 
+layout(push_constant) uniform PushConsts {
+	vec3 pos;
+	vec4 rot;
+} pc;
+
 void main() {
-	gl_Position = vec4(pos, 1.0);
+	gl_Position = vec4(pos - pc.pos, 1.0);
 }"
 	}
 }

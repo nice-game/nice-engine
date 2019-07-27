@@ -3,6 +3,7 @@ pub mod mesh;
 pub mod mesh_batch;
 pub mod mesh_data;
 pub mod surface;
+pub mod transform;
 #[cfg(feature = "window")]
 pub mod window;
 

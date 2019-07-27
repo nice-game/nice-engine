@@ -8,6 +8,7 @@ edition = "2018"
 members = ["capi"]
 
 [dependencies]
+cgmath = "0.17.0"
 log = "0.4.7"
 vulkano = "0.13.0"
 vulkano-shaders = "0.13.0"

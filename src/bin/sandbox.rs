@@ -1,3 +1,4 @@
+use cgmath::vec3;
 use nice_engine::{
 	camera::Camera,
 	mesh::Mesh,
@@ -47,6 +48,8 @@ pub fn main() {
 			},
 			_ => (),
 		});
+
+		cam.transform_mut().pos += vec3(0.001, 0.0, 0.0);
 
 		win.surface().draw(&cam);
 
