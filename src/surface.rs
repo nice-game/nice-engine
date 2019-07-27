@@ -56,7 +56,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 			let pc = vs3d::ty::PushConsts {
 				pos: cam.transform().pos.into(),
 				rot: cam.transform().rot.into(),
-				_dummy0: [0; 4],
+				_dummy0: unsafe { std::mem::uninitialized() },
 			};
 			command_buffer = command_buffer
 				.draw(self.pipeline_3d.pipeline.clone(), &Default::default(), vec![verts], (), pc)
