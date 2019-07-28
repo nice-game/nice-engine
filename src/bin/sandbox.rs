@@ -1,3 +1,4 @@
+use cgmath::{prelude::*, vec3, Quaternion, Rad};
 use nice_engine::{
 	camera::Camera,
 	mesh::Mesh,
@@ -17,9 +18,9 @@ pub fn main() {
 	let (triangle, triangle_future) = MeshData::new(
 		&ctx,
 		[
-			Pntl_32F { pos: [-0.5, -0.25, -10.0], nor: [0.0; 3], tex: [0.0; 2], lmap: [0.0; 2] },
-			Pntl_32F { pos: [0.0, 0.5, -10.0], nor: [0.0; 3], tex: [0.0; 2], lmap: [0.0; 2] },
-			Pntl_32F { pos: [0.25, -0.1, -10.0], nor: [0.0; 3], tex: [0.0; 2], lmap: [0.0; 2] },
+			Pntl_32F { pos: [-0.5, -0.25, 0.0], nor: [0.0; 3], tex: [0.0; 2], lmap: [0.0; 2] },
+			Pntl_32F { pos: [0.0, 0.5, 0.0], nor: [0.0; 3], tex: [0.0; 2], lmap: [0.0; 2] },
+			Pntl_32F { pos: [0.25, -0.1, 0.0], nor: [0.0; 3], tex: [0.0; 2], lmap: [0.0; 2] },
 		],
 		[0, 1, 2],
 	)
@@ -30,9 +31,10 @@ pub fn main() {
 	mesh.set_mesh_data(Some(triangle));
 
 	let batch = MeshBatch::new();
-	batch.insert_mesh(mesh);
+	batch.insert_mesh(mesh.clone());
 
 	let mut cam = Camera::new();
+	cam.transform_mut().pos = vec3(0.0, 0.0, 3.0);
 	cam.set_perspective(16.0 / 9.0, 90.0, 1.0, 1000.0);
 	cam.set_mesh_batch(Some(batch.clone()));
 
@@ -48,6 +50,10 @@ pub fn main() {
 			},
 			_ => (),
 		});
+
+		let mut transform = mesh.transform();
+		transform.rot = transform.rot * Quaternion::from_angle_y(Rad(0.01));
+		mesh.set_transform(transform);
 
 		win.surface().draw(&cam);
 

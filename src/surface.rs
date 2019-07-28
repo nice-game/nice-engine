@@ -54,10 +54,13 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		for mesh in &*cam.mesh_batch().unwrap().meshes().lock().unwrap() {
 			let verts = mesh.mesh_data().unwrap().vertices().clone();
 			let pc = vs3d::ty::PushConsts {
-				proj: cam.projection().into(),
-				pos: cam.transform().pos.into(),
-				rot: cam.transform().rot.into(),
+				cam_proj: cam.projection().into(),
+				cam_pos: cam.transform().pos.into(),
+				cam_rot: cam.transform().rot.into(),
+				mesh_pos: mesh.transform().pos.into(),
+				mesh_rot: mesh.transform().rot.into(),
 				_dummy0: unsafe { std::mem::uninitialized() },
+				_dummy1: unsafe { std::mem::uninitialized() },
 			};
 			command_buffer = command_buffer
 				.draw(self.pipeline_3d.pipeline.clone(), &Default::default(), vec![verts], (), pc)
@@ -232,9 +235,11 @@ layout(location = 2) in vec2 tex;
 layout(location = 3) in vec2 lmap;
 
 layout(push_constant) uniform PushConsts {
-	vec4 proj;
-	vec3 pos;
-	vec4 rot;
+	vec4 cam_proj;
+	vec3 cam_pos;
+	vec4 cam_rot;
+	vec3 mesh_pos;
+	vec4 mesh_rot;
 } pc;
 
 vec4 perspective(vec4 proj, vec3 pos) {
@@ -251,11 +256,12 @@ vec3 quat_mul(vec4 quat, vec3 vec) {
 
 void main() {
 	// stupid math library puts w first, so we flip it here
-	vec4 camera_rot = pc.rot.yzwx;
+	vec4 cam_rot = pc.cam_rot.yzwx;
+	vec4 mesh_rot = pc.mesh_rot.yzwx;
 
-	vec3 position_ws = pos;
-	vec3 position_cs = quat_mul(quat_inv(camera_rot), position_ws - pc.pos);
-	gl_Position = perspective(pc.proj, position_cs);
+	vec3 pos_ws = quat_mul(mesh_rot, pos) + pc.mesh_pos;
+	vec3 pos_cs = quat_mul(quat_inv(cam_rot), pos_ws - pc.cam_pos);
+	gl_Position = perspective(pc.cam_proj, pos_cs);
 }"
 	}
 }
