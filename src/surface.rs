@@ -54,10 +54,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		for mesh in &*cam.mesh_batch().unwrap().meshes().lock().unwrap() {
 			let verts = mesh.mesh_data().unwrap().vertices().clone();
 			let pc = vs3d::ty::PushConsts {
-				aspect: cam.aspect(),
-				fovx: cam.fovx(),
-				znear: cam.znear(),
-				zfar: cam.zfar(),
+				proj: cam.projection().into(),
 				pos: cam.transform().pos.into(),
 				rot: cam.transform().rot.into(),
 				_dummy0: unsafe { std::mem::uninitialized() },
@@ -235,16 +232,30 @@ layout(location = 2) in vec2 tex;
 layout(location = 3) in vec2 lmap;
 
 layout(push_constant) uniform PushConsts {
-	float aspect;
-	float fovx;
-	float znear;
-	float zfar;
+	vec4 proj;
 	vec3 pos;
 	vec4 rot;
 } pc;
 
+vec4 perspective(vec4 proj, vec3 pos) {
+	return vec4(pos.xy * proj.xy, pos.z * proj.z + proj.w, -pos.z);
+}
+
+vec4 quat_inv(vec4 quat) {
+	return vec4(-quat.xyz, quat.w) / dot(quat, quat);
+}
+
+vec3 quat_mul(vec4 quat, vec3 vec) {
+	return cross(quat.xyz, cross(quat.xyz, vec) + vec * quat.w) * 2.0 + vec;
+}
+
 void main() {
-	gl_Position = vec4(pos - pc.pos, 1.0);
+	// stupid math library puts w first, so we flip it here
+	vec4 camera_rot = pc.rot.yzwx;
+
+	vec3 position_ws = pos;
+	vec3 position_cs = quat_mul(quat_inv(camera_rot), position_ws - pc.pos);
+	gl_Position = perspective(pc.proj, position_cs);
 }"
 	}
 }

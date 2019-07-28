@@ -1,40 +1,23 @@
 use crate::{mesh_batch::MeshBatch, transform::Transform};
-use std::sync::Arc;
+use cgmath::{prelude::*, vec4, Vector4};
+use std::{f32::consts::PI, sync::Arc};
 
 pub struct Camera {
-	aspect: f32,
-	fovx: f32,
-	znear: f32,
-	zfar: f32,
+	proj: Vector4<f32>,
 	transform: Transform,
 	mesh_batch: Option<Arc<MeshBatch>>,
 }
 impl Camera {
 	pub fn new() -> Self {
-		Camera { aspect: 0.0, fovx: 0.0, znear: 0.0, zfar: 0.0, transform: Transform::default(), mesh_batch: None }
+		Camera { proj: Vector4::zero(), transform: Transform::default(), mesh_batch: None }
+	}
+
+	pub fn projection(&self) -> Vector4<f32> {
+		self.proj
 	}
 
 	pub fn set_perspective(&mut self, aspect: f32, fovx: f32, znear: f32, zfar: f32) {
-		self.aspect = aspect;
-		self.fovx = fovx;
-		self.znear = znear;
-		self.zfar = zfar;
-	}
-
-	pub fn aspect(&self) -> f32 {
-		self.aspect
-	}
-
-	pub fn fovx(&self) -> f32 {
-		self.fovx
-	}
-
-	pub fn znear(&self) -> f32 {
-		self.znear
-	}
-
-	pub fn zfar(&self) -> f32 {
-		self.zfar
+		self.proj = projection(aspect, fovx, znear, zfar);
 	}
 
 	pub fn mesh_batch(&self) -> Option<&Arc<MeshBatch>> {
@@ -52,4 +35,9 @@ impl Camera {
 	pub fn transform_mut(&mut self) -> &mut Transform {
 		&mut self.transform
 	}
+}
+
+fn projection(aspect: f32, fovx: f32, znear: f32, zfar: f32) -> Vector4<f32> {
+	let f = 1.0 / (fovx * (PI / 360.0)).tan();
+	vec4(f / aspect, f, (zfar + znear) / (znear - zfar), 2.0 * zfar * znear / (znear - zfar))
 }
