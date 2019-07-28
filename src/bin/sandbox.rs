@@ -2,7 +2,6 @@ use cgmath::{prelude::*, vec3, Quaternion, Rad};
 use nice_engine::{
 	camera::Camera,
 	mesh::Mesh,
-	mesh_batch::MeshBatch,
 	mesh_data::{MeshData, Pntl_32F},
 	window::Window,
 	Context,
@@ -27,16 +26,12 @@ pub fn main() {
 	.unwrap();
 	triangle_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 
-	let mesh = Mesh::new();
+	let mut mesh = Mesh::new();
 	mesh.set_mesh_data(Some(triangle));
-
-	let batch = MeshBatch::new();
-	batch.insert_mesh(mesh.clone());
 
 	let mut cam = Camera::new();
 	cam.transform_mut().pos = vec3(0.0, 0.0, 3.0);
 	cam.set_perspective(16.0 / 9.0, 90.0, 1.0, 1000.0);
-	cam.set_mesh_batch(Some(batch.clone()));
 
 	loop {
 		let mut done = false;
@@ -51,11 +46,10 @@ pub fn main() {
 			_ => (),
 		});
 
-		let mut transform = mesh.transform();
+		let transform = mesh.transform_mut();
 		transform.rot = transform.rot * Quaternion::from_angle_y(Rad(0.01));
-		mesh.set_transform(transform);
 
-		win.surface().draw(&cam);
+		win.surface().draw(&cam, &[&mesh]);
 
 		if done {
 			break;

@@ -1,32 +1,33 @@
 use crate::{mesh_data::MeshData, transform::Transform};
 use std::{
 	hash::{Hash, Hasher},
-	sync::{Arc, Mutex},
+	sync::Arc,
 };
 
 pub struct Mesh {
 	id: Arc<()>,
-	inner: Mutex<MeshInner>,
+	mesh_data: Option<Arc<MeshData>>,
+	transform: Transform,
 }
 impl Mesh {
-	pub fn new() -> Arc<Self> {
-		Arc::new(Self { id: Arc::new(()), inner: Mutex::new(MeshInner::new()) })
+	pub fn new() -> Self {
+		Self { id: Arc::new(()), mesh_data: None, transform: Transform::default() }
 	}
 
-	pub fn mesh_data(&self) -> Option<Arc<MeshData>> {
-		self.inner.lock().unwrap().mesh_data.clone()
+	pub fn mesh_data(&self) -> &Option<Arc<MeshData>> {
+		&self.mesh_data
 	}
 
-	pub fn set_mesh_data(&self, mesh_data: Option<Arc<MeshData>>) {
-		self.inner.lock().unwrap().mesh_data = mesh_data;
+	pub fn set_mesh_data(&mut self, mesh_data: Option<Arc<MeshData>>) {
+		self.mesh_data = mesh_data;
 	}
 
-	pub fn transform(&self) -> Transform {
-		self.inner.lock().unwrap().transform.clone()
+	pub fn transform(&self) -> &Transform {
+		&self.transform
 	}
 
-	pub fn set_transform(&self, transform: Transform) {
-		self.inner.lock().unwrap().transform = transform;
+	pub fn transform_mut(&mut self) -> &mut Transform {
+		&mut self.transform
 	}
 }
 impl Hash for Mesh {
@@ -40,13 +41,3 @@ impl PartialEq for Mesh {
 	}
 }
 impl Eq for Mesh {}
-
-struct MeshInner {
-	mesh_data: Option<Arc<MeshData>>,
-	transform: Transform,
-}
-impl MeshInner {
-	pub fn new() -> Self {
-		Self { mesh_data: None, transform: Transform::default() }
-	}
-}

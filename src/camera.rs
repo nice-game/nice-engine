@@ -1,15 +1,14 @@
-use crate::{mesh_batch::MeshBatch, transform::Transform};
+use crate::transform::Transform;
 use cgmath::{prelude::*, vec4, Vector4};
-use std::{f32::consts::PI, sync::Arc};
+use std::f32::consts::PI;
 
 pub struct Camera {
 	proj: Vector4<f32>,
 	transform: Transform,
-	mesh_batch: Option<Arc<MeshBatch>>,
 }
 impl Camera {
 	pub fn new() -> Self {
-		Camera { proj: Vector4::zero(), transform: Transform::default(), mesh_batch: None }
+		Camera { proj: Vector4::zero(), transform: Transform::default() }
 	}
 
 	pub fn projection(&self) -> Vector4<f32> {
@@ -18,14 +17,6 @@ impl Camera {
 
 	pub fn set_perspective(&mut self, aspect: f32, fovx: f32, znear: f32, zfar: f32) {
 		self.proj = projection(aspect, fovx, znear, zfar);
-	}
-
-	pub fn mesh_batch(&self) -> Option<&Arc<MeshBatch>> {
-		self.mesh_batch.as_ref()
-	}
-
-	pub fn set_mesh_batch(&mut self, mesh_batch: Option<Arc<MeshBatch>>) {
-		self.mesh_batch = mesh_batch;
 	}
 
 	pub fn transform(&self) -> &Transform {

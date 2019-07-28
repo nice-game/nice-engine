@@ -1,4 +1,4 @@
-use crate::{camera::Camera, mesh_data, Context};
+use crate::{camera::Camera, mesh::Mesh, mesh_data, Context};
 use std::{os::raw::c_ulong, sync::Arc};
 use vulkano::{
 	command_buffer::AutoCommandBufferBuilder,
@@ -31,7 +31,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		Self::new_inner(ctx, surface)
 	}
 
-	pub fn draw(&mut self, cam: &Camera) {
+	pub fn draw(&mut self, cam: &Camera, meshes: &[&Mesh]) {
 		let mut prev_frame_end = self.prev_frame_end.take().unwrap();
 		prev_frame_end.cleanup_finished();
 
@@ -51,8 +51,8 @@ impl<W: Send + Sync + 'static> Surface<W> {
 				.unwrap()
 				.begin_render_pass(self.pipeline_3d.framebuffers[image_num].clone(), false, clear_values)
 				.unwrap();
-		for mesh in &*cam.mesh_batch().unwrap().meshes().lock().unwrap() {
-			let verts = mesh.mesh_data().unwrap().vertices().clone();
+		for mesh in meshes {
+			let verts = mesh.mesh_data().as_ref().unwrap().vertices().clone();
 			let pc = vs3d::ty::PushConsts {
 				cam_proj: cam.projection().into(),
 				cam_pos: cam.transform().pos.into(),
