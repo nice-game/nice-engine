@@ -2,6 +2,7 @@ pub mod camera;
 pub mod mesh;
 pub mod mesh_data;
 pub mod surface;
+pub mod texture;
 pub mod transform;
 #[cfg(feature = "window")]
 pub mod window;
@@ -18,6 +19,7 @@ use vulkano::{
 	device::{Device, DeviceExtensions, Features, Queue},
 	framebuffer::RenderPassAbstract,
 	instance::{ApplicationInfo, Instance, InstanceExtensions, PhysicalDevice},
+	sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode},
 };
 
 /// Root struct for this library. Any windows that are created using the same context will share some resources.
@@ -26,9 +28,10 @@ pub struct Context {
 	device: Arc<Device>,
 	queue: Arc<Queue>,
 	render_pass_3d: Arc<dyn RenderPassAbstract + Send + Sync>,
+	sampler: Arc<Sampler>,
 }
 impl Context {
-	pub fn new(name: Option<&str>, version: Option<Version>) -> Result<Self, InstanceCreationError> {
+	pub fn new(name: Option<&str>, version: Option<Version>) -> Result<Arc<Self>, InstanceCreationError> {
 		let app_info = ApplicationInfo {
 			application_name: name.map(|x| x.into()),
 			application_version: version,
@@ -85,7 +88,22 @@ impl Context {
 			.unwrap(),
 		);
 
-		Ok(Self { instance, device, queue, render_pass_3d })
+		let sampler = Sampler::new(
+			device.clone(),
+			Filter::Linear,
+			Filter::Linear,
+			MipmapMode::Nearest,
+			SamplerAddressMode::Repeat,
+			SamplerAddressMode::Repeat,
+			SamplerAddressMode::Repeat,
+			0.0,
+			1.0,
+			0.0,
+			0.0,
+		)
+		.unwrap();
+
+		Ok(Arc::new(Self { instance, device, queue, render_pass_3d, sampler }))
 	}
 
 	fn device(&self) -> &Arc<Device> {

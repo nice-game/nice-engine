@@ -3,16 +3,17 @@ use nice_engine::{
 	camera::Camera,
 	mesh::Mesh,
 	mesh_data::{MeshData, Pntl_32F},
+	texture::Texture,
 	window::Window,
 	Context,
 };
-use vulkano::sync::GpuFuture;
+use vulkano::{format::Format, image::Dimensions, sync::GpuFuture};
 use winit::{dpi::LogicalSize, Event, EventsLoop, WindowEvent};
 
 pub fn main() {
-	let mut ctx = Context::new(Some("nIce Engine"), None).unwrap();
+	let ctx = Context::new(Some("nIce Engine"), None).unwrap();
 	let mut events = EventsLoop::new();
-	let mut win = Window::new(&mut ctx, &events).unwrap();
+	let mut win = Window::new(&ctx, &events).unwrap();
 
 	let (triangle, triangle_future) = MeshData::new(
 		&ctx,
@@ -24,7 +25,16 @@ pub fn main() {
 		[0, 1, 2],
 	)
 	.unwrap();
-	triangle_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
+
+	let (tex, tex_future) = Texture::from_iter(
+		&ctx,
+		vec![[0u8, 0, 255, 255], [0, 0, 0, 255], [0, 0, 0, 255], [0, 0, 255, 255]].into_iter(),
+		Dimensions::Dim2d { width: 2, height: 2 },
+		Format::R8G8B8A8Unorm,
+	)
+	.unwrap();
+
+	triangle_future.join(tex_future).then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 
 	let mut mesh = Mesh::new();
 	mesh.set_mesh_data(Some(triangle));
@@ -35,6 +45,7 @@ pub fn main() {
 
 	loop {
 		let mut done = false;
+
 		events.poll_events(|event| match event {
 			Event::WindowEvent { event, .. } => match event {
 				WindowEvent::CloseRequested => done = true,
@@ -46,13 +57,13 @@ pub fn main() {
 			_ => (),
 		});
 
+		if done {
+			break;
+		}
+
 		let transform = mesh.transform_mut();
 		transform.rot = transform.rot * Quaternion::from_angle_y(Rad(0.01));
 
 		win.surface().draw(&cam, &[&mesh]);
-
-		if done {
-			break;
-		}
 	}
 }

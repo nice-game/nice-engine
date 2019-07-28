@@ -27,7 +27,7 @@ pub struct Surface<W: Send + Sync + 'static = ()> {
 }
 impl<W: Send + Sync + 'static> Surface<W> {
 	#[cfg(feature = "window")]
-	pub fn from_vk(ctx: &mut Context, surface: Arc<VkSurface<W>>) -> Self {
+	pub fn from_vk(ctx: &Context, surface: Arc<VkSurface<W>>) -> Self {
 		Self::new_inner(ctx, surface)
 	}
 
@@ -111,7 +111,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		&self.swapchain
 	}
 
-	fn new_inner(ctx: &mut Context, surface: Arc<VkSurface<W>>) -> Self {
+	fn new_inner(ctx: &Context, surface: Arc<VkSurface<W>>) -> Self {
 		let device = ctx.device().clone();
 		let queue = ctx.queue().clone();
 		let caps = surface.capabilities(device.physical_device()).expect("failed to get surface capabilities");

@@ -8,7 +8,7 @@ pub struct Window {
 	surface: Surface<winit::Window>,
 }
 impl Window {
-	pub fn new(ctx: &mut Context, events: &EventsLoop) -> Result<Self, CreationError> {
+	pub fn new(ctx: &Context, events: &EventsLoop) -> Result<Self, CreationError> {
 		let vk_surface = WindowBuilder::new()
 			.with_dimensions((1440, 810).into())
 			.with_title("nIce Engine")
