@@ -1,7 +1,7 @@
 use crate::Context;
 use std::sync::Arc;
 use vulkano::{
-	buffer::{BufferAccess, BufferUsage, ImmutableBuffer},
+	buffer::{BufferAccess, BufferUsage, ImmutableBuffer, TypedBufferAccess},
 	device::Queue,
 	memory::DeviceMemoryAllocError,
 	sync::GpuFuture,
@@ -10,7 +10,7 @@ use vulkano::{
 #[derive(Clone)]
 pub struct MeshData {
 	vertices: Arc<dyn BufferAccess + Send + Sync>,
-	indices: Arc<dyn BufferAccess + Send + Sync>,
+	indices: Arc<dyn TypedBufferAccess<Content = [u32]> + Send + Sync>,
 	queue: Arc<Queue>,
 }
 impl MeshData {
@@ -21,12 +21,12 @@ impl MeshData {
 	) -> Result<(Arc<Self>, impl GpuFuture), DeviceMemoryAllocError>
 	where
 		V: Send + Sync + 'static,
-		I: Send + Sync + 'static,
+		I: ExactSizeIterator<Item = u32>,
 	{
 		let (vertices, vertices_future) =
 			ImmutableBuffer::from_data(vertex_data, BufferUsage::vertex_buffer(), ctx.queue().clone())?;
 		let (indices, indices_future) =
-			ImmutableBuffer::from_data(index_data, BufferUsage::index_buffer(), ctx.queue().clone())?;
+			ImmutableBuffer::from_iter(index_data, BufferUsage::index_buffer(), ctx.queue().clone())?;
 
 		let ret = Arc::new(Self { vertices, indices, queue: ctx.queue().clone() });
 		Ok((ret, vertices_future.join(indices_future)))
@@ -43,12 +43,12 @@ impl MeshData {
 		Ok(vertices_future)
 	}
 
-	pub fn set_index_data<T>(&mut self, data: T) -> Result<impl GpuFuture, DeviceMemoryAllocError>
+	pub fn set_index_data<I>(&mut self, data: I) -> Result<impl GpuFuture, DeviceMemoryAllocError>
 	where
-		T: Send + Sync + 'static,
+		I: ExactSizeIterator<Item = u32>,
 	{
 		let (indices, indices_future) =
-			ImmutableBuffer::from_data(data, BufferUsage::vertex_buffer(), self.queue.clone())?;
+			ImmutableBuffer::from_iter(data, BufferUsage::vertex_buffer(), self.queue.clone())?;
 		self.indices = indices;
 
 		Ok(indices_future)
@@ -58,7 +58,7 @@ impl MeshData {
 		&self.vertices
 	}
 
-	pub fn indices(&self) -> &Arc<dyn BufferAccess + Send + Sync> {
+	pub fn indices(&self) -> &Arc<dyn TypedBufferAccess<Content = [u32]> + Send + Sync> {
 		&self.indices
 	}
 }

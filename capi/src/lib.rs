@@ -2,19 +2,16 @@ mod game_graph;
 mod game_graph_driver;
 mod render_engine;
 
+use self::{game_graph_driver::GGD_DriverContext, render_engine::RENDER_ENGINE};
 use crate::game_graph::GGDriverStatus;
-use self::{
-	game_graph_driver::GGD_DriverContext,
-	render_engine::{ RENDER_ENGINE },
-};
 use libc::strlen;
 use nice_engine::Version;
-use std::{ slice, str };
+use std::{slice, str};
 
 const GGD_API_VERSION: u64 = 0;
 
 mod ctx {
-	use nice_engine::{ Context, Version };
+	use nice_engine::{Context, Version};
 
 	static mut CTX: Option<Context> = None;
 

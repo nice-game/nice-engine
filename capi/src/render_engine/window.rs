@@ -1,14 +1,14 @@
+#[cfg(windows)]
+use crate::game_graph_driver::GGD_WindowInfo_WIN32;
+#[cfg(unix)]
+use crate::game_graph_driver::{GGD_WindowInfo_WAYLAND, GGD_WindowInfo_X11};
 use crate::{
 	ctx,
 	game_graph::GGPlatform,
-	game_graph_driver::{ GGD_Camera, GGD_ImageData, GGD_Window, GGD_WindowInfo },
+	game_graph_driver::{GGD_Camera, GGD_ImageData, GGD_Window, GGD_WindowInfo},
 };
-#[cfg(unix)]
-use crate::game_graph_driver::{ GGD_WindowInfo_WAYLAND, GGD_WindowInfo_X11 };
-#[cfg(windows)]
-use crate::game_graph_driver::GGD_WindowInfo_WIN32;
 use nice_engine::surface::Surface;
-use std::{ ptr::null_mut };
+use std::ptr::null_mut;
 
 #[allow(non_snake_case)]
 pub unsafe extern fn Window_Alloc(info: *mut GGD_WindowInfo) -> *mut GGD_Window {
@@ -63,6 +63,4 @@ pub unsafe extern fn Window_Resize(this: *mut GGD_Window, w: u32, h: u32) {
 }
 
 #[allow(non_snake_case)]
-pub extern fn Window_Draw(_this: *mut GGD_Window, _src: *mut GGD_Camera, _overlay: *mut GGD_ImageData) {
-
-}
+pub extern fn Window_Draw(_this: *mut GGD_Window, _src: *mut GGD_Camera, _overlay: *mut GGD_ImageData) {}

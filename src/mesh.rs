@@ -1,17 +1,25 @@
-use crate::{mesh_data::MeshData, transform::Transform};
-use std::{
-	hash::{Hash, Hasher},
-	sync::Arc,
+use crate::{mesh_data::MeshData, texture::Texture, transform::Transform, Context};
+use std::sync::Arc;
+use vulkano::{
+	descriptor::{descriptor_set::PersistentDescriptorSet, DescriptorSet, PipelineLayoutAbstract},
+	image::ImageViewAccess,
+	sampler::Sampler,
 };
 
 pub struct Mesh {
-	id: Arc<()>,
+	ctx: Arc<Context>,
 	mesh_data: Option<Arc<MeshData>>,
 	transform: Transform,
+	texture_desc: Arc<dyn DescriptorSet + Send + Sync>,
 }
 impl Mesh {
-	pub fn new() -> Self {
-		Self { id: Arc::new(()), mesh_data: None, transform: Transform::default() }
+	pub fn new(ctx: Arc<Context>) -> Self {
+		let texture_desc = make_desc_set(
+			ctx.context_3d().layout_desc().clone(),
+			ctx.white_pixel().image().clone(),
+			ctx.sampler().clone(),
+		);
+		Self { ctx, mesh_data: None, transform: Transform::default(), texture_desc }
 	}
 
 	pub fn mesh_data(&self) -> &Option<Arc<MeshData>> {
@@ -29,15 +37,28 @@ impl Mesh {
 	pub fn transform_mut(&mut self) -> &mut Transform {
 		&mut self.transform
 	}
-}
-impl Hash for Mesh {
-	fn hash<H: Hasher>(&self, state: &mut H) {
-		self.id.hash(state);
+
+	pub fn texture_desc(&self) -> &Arc<dyn DescriptorSet + Send + Sync> {
+		&self.texture_desc
+	}
+
+	pub fn set_texture(&mut self, texture: &Texture) {
+		self.texture_desc = make_desc_set(
+			self.ctx.context_3d().layout_desc().clone(),
+			texture.image().clone(),
+			self.ctx.sampler().clone(),
+		);
 	}
 }
-impl PartialEq for Mesh {
-	fn eq(&self, other: &Self) -> bool {
-		self.id == other.id
-	}
+
+fn make_desc_set<L, T: ImageViewAccess>(
+	layout: L,
+	image_view: T,
+	sampler: Arc<Sampler>,
+) -> Arc<dyn DescriptorSet + Send + Sync>
+where
+	L: PipelineLayoutAbstract + Send + Sync + 'static,
+	T: ImageViewAccess + Send + Sync + 'static,
+{
+	Arc::new(PersistentDescriptorSet::start(layout, 0).add_sampled_image(image_view, sampler).unwrap().build().unwrap())
 }
-impl Eq for Mesh {}

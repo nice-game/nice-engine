@@ -1,4 +1,4 @@
-use crate::{camera::Camera, mesh::Mesh, mesh_data, Context};
+use crate::{camera::Camera, mesh::Mesh, mesh_data, vs3d, Context};
 use std::{os::raw::c_ulong, sync::Arc};
 use vulkano::{
 	command_buffer::AutoCommandBufferBuilder,
@@ -27,7 +27,7 @@ pub struct Surface<W: Send + Sync + 'static = ()> {
 }
 impl<W: Send + Sync + 'static> Surface<W> {
 	#[cfg(feature = "window")]
-	pub fn from_vk(ctx: &Context, surface: Arc<VkSurface<W>>) -> Self {
+	pub fn from_vk(ctx: &Arc<Context>, surface: Arc<VkSurface<W>>) -> Self {
 		Self::new_inner(ctx, surface)
 	}
 
@@ -53,6 +53,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 				.unwrap();
 		for mesh in meshes {
 			let verts = mesh.mesh_data().as_ref().unwrap().vertices().clone();
+			let indices = mesh.mesh_data().as_ref().unwrap().indices().clone();
 			let pc = vs3d::ty::PushConsts {
 				cam_proj: cam.projection().into(),
 				cam_pos: cam.transform().pos.into(),
@@ -63,7 +64,14 @@ impl<W: Send + Sync + 'static> Surface<W> {
 				_dummy1: unsafe { std::mem::uninitialized() },
 			};
 			command_buffer = command_buffer
-				.draw(self.pipeline_3d.pipeline.clone(), &Default::default(), vec![verts], (), pc)
+				.draw_indexed(
+					self.pipeline_3d.pipeline.clone(),
+					&Default::default(),
+					vec![verts],
+					indices,
+					mesh.texture_desc().clone(),
+					pc,
+				)
 				.unwrap();
 		}
 
@@ -111,7 +119,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		&self.swapchain
 	}
 
-	fn new_inner(ctx: &Context, surface: Arc<VkSurface<W>>) -> Self {
+	fn new_inner(ctx: &Arc<Context>, surface: Arc<VkSurface<W>>) -> Self {
 		let device = ctx.device().clone();
 		let queue = ctx.queue().clone();
 		let caps = surface.capabilities(device.physical_device()).expect("failed to get surface capabilities");
@@ -136,7 +144,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		.expect("failed to create swapchain");
 
 		let dimensions = [dims[0] as f32, dims[1] as f32];
-		let pipeline_3d = Pipeline3D::new(ctx.render_pass_3d().clone(), &images, dimensions);
+		let pipeline_3d = Pipeline3D::new(ctx.clone(), &images, dimensions);
 		let prev_frame_end = Some(Box::new(sync::now(device.clone())) as Box<dyn GpuFuture>);
 
 		Self { device, queue, surface, swapchain, images, pipeline_3d, prev_frame_end }
@@ -144,7 +152,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 }
 impl Surface<()> {
 	pub unsafe fn from_hwnd<T, U>(
-		ctx: &mut Context,
+		ctx: &Arc<Context>,
 		hinstance: *const T,
 		hwnd: *const U,
 	) -> Result<Self, SurfaceCreationError> {
@@ -152,7 +160,7 @@ impl Surface<()> {
 	}
 
 	pub unsafe fn from_xlib<D>(
-		ctx: &mut Context,
+		ctx: &Arc<Context>,
 		display: *const D,
 		surface: c_ulong,
 	) -> Result<Self, SurfaceCreationError> {
@@ -160,7 +168,7 @@ impl Surface<()> {
 	}
 
 	pub unsafe fn from_wayland<D, S>(
-		ctx: &mut Context,
+		ctx: &Arc<Context>,
 		display: *const D,
 		surface: *const S,
 	) -> Result<Self, SurfaceCreationError> {
@@ -181,100 +189,38 @@ fn create_framebuffers<T: ImageViewAccess + Send + Sync + 'static>(
 		.collect()
 }
 
-fn create_pipeline_3d(
-	render_pass: &Arc<dyn RenderPassAbstract + Send + Sync>,
-	dimensions: [f32; 2],
-) -> Arc<dyn GraphicsPipelineAbstract + Send + Sync> {
-	let device = render_pass.device();
-	let vs = vs3d::Shader::load(device.clone()).unwrap();
-	let fs = fs3d::Shader::load(device.clone()).unwrap();
-
+fn create_pipeline_3d(ctx: &Arc<Context>, dimensions: [f32; 2]) -> Arc<dyn GraphicsPipelineAbstract + Send + Sync> {
 	Arc::new(
 		GraphicsPipeline::start()
 			.vertex_input_single_buffer::<mesh_data::Pntl_32F>()
-			.vertex_shader(vs.main_entry_point(), ())
+			.vertex_shader(ctx.context_3d().vertex_shader().main_entry_point(), ())
 			.triangle_list()
 			.viewports(vec![Viewport { origin: [0.0, 0.0], dimensions, depth_range: 0.0..1.0 }])
-			.fragment_shader(fs.main_entry_point(), ())
-			.render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
-			.build(device.clone())
+			.fragment_shader(ctx.context_3d().fragment_shader().main_entry_point(), ())
+			.render_pass(Subpass::from(ctx.context_3d().render_pass().clone(), 0).unwrap())
+			.build(ctx.context_3d().render_pass().device().clone())
 			.unwrap(),
 	)
 }
 
 struct Pipeline3D {
-	render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
+	ctx: Arc<Context>,
 	pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
 	framebuffers: Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
 }
 impl Pipeline3D {
 	fn new<T: ImageViewAccess + Send + Sync + 'static>(
-		render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
+		ctx: Arc<Context>,
 		images: &Vec<Arc<T>>,
 		dimensions: [f32; 2],
 	) -> Self {
-		let pipeline = create_pipeline_3d(&render_pass, dimensions);
-		let framebuffers = create_framebuffers(&render_pass, images);
-		Pipeline3D { render_pass, pipeline, framebuffers }
+		let pipeline = create_pipeline_3d(&ctx, dimensions);
+		let framebuffers = create_framebuffers(ctx.context_3d().render_pass(), images);
+		Pipeline3D { ctx, pipeline, framebuffers }
 	}
 
 	fn recreate<T: ImageViewAccess + Send + Sync + 'static>(&mut self, images: &Vec<Arc<T>>, dimensions: [f32; 2]) {
-		self.pipeline = create_pipeline_3d(&self.render_pass, dimensions);
-		self.framebuffers = create_framebuffers(&self.render_pass, images);
-	}
-}
-
-pub(crate) mod vs3d {
-	vulkano_shaders::shader! {
-		ty: "vertex",
-		src: "
-#version 450
-layout(location = 0) in vec3 pos;
-layout(location = 1) in vec3 nor;
-layout(location = 2) in vec2 tex;
-layout(location = 3) in vec2 lmap;
-
-layout(push_constant) uniform PushConsts {
-	vec4 cam_proj;
-	vec3 cam_pos;
-	vec4 cam_rot;
-	vec3 mesh_pos;
-	vec4 mesh_rot;
-} pc;
-
-vec4 perspective(vec4 proj, vec3 pos) {
-	return vec4(pos.xy * proj.xy, pos.z * proj.z + proj.w, -pos.z);
-}
-
-vec4 quat_inv(vec4 quat) {
-	return vec4(-quat.xyz, quat.w) / dot(quat, quat);
-}
-
-vec3 quat_mul(vec4 quat, vec3 vec) {
-	return cross(quat.xyz, cross(quat.xyz, vec) + vec * quat.w) * 2.0 + vec;
-}
-
-void main() {
-	// stupid math library puts w first, so we flip it here
-	vec4 cam_rot = pc.cam_rot.yzwx;
-	vec4 mesh_rot = pc.mesh_rot.yzwx;
-
-	vec3 pos_ws = quat_mul(mesh_rot, pos) + pc.mesh_pos;
-	vec3 pos_cs = quat_mul(quat_inv(cam_rot), pos_ws - pc.cam_pos);
-	gl_Position = perspective(pc.cam_proj, pos_cs);
-}"
-	}
-}
-
-pub(crate) mod fs3d {
-	vulkano_shaders::shader! {
-		ty: "fragment",
-		src: "
-#version 450
-layout(location = 0) out vec4 f_color;
-void main() {
-	f_color = vec4(1.0, 0.0, 0.0, 1.0);
-}
-"
+		self.pipeline = create_pipeline_3d(&self.ctx, dimensions);
+		self.framebuffers = create_framebuffers(self.ctx.context_3d().render_pass(), images);
 	}
 }

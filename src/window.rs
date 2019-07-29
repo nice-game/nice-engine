@@ -1,6 +1,7 @@
 #![cfg(feature = "window")]
 
 use crate::{surface::Surface, Context};
+use std::sync::Arc;
 use vulkano_win::{CreationError, VkSurfaceBuild};
 use winit::{EventsLoop, WindowBuilder};
 
@@ -8,7 +9,7 @@ pub struct Window {
 	surface: Surface<winit::Window>,
 }
 impl Window {
-	pub fn new(ctx: &Context, events: &EventsLoop) -> Result<Self, CreationError> {
+	pub fn new(ctx: &Arc<Context>, events: &EventsLoop) -> Result<Self, CreationError> {
 		let vk_surface = WindowBuilder::new()
 			.with_dimensions((1440, 810).into())
 			.with_title("nIce Engine")
