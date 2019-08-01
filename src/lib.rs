@@ -7,7 +7,7 @@ pub mod transform;
 #[cfg(feature = "window")]
 pub mod window;
 
-use crate::surface::SWAP_FORMAT;
+use crate::surface::{DEPTH_FORMAT, SWAP_FORMAT};
 use log::info;
 use std::sync::Arc;
 use vulkano::{
@@ -136,6 +136,9 @@ impl Context {
 }
 
 struct Context3D {
+	depth_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
+	depth_vs: depth_vs::Shader,
+	depth_fs: depth_fs::Shader,
 	render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
 	vs: vs3d::Shader,
 	fs: fs3d::Shader,
@@ -143,17 +146,25 @@ struct Context3D {
 }
 impl Context3D {
 	fn new(device: &Arc<Device>) -> Self {
+		let depth_pass = Arc::new(
+			vulkano::single_pass_renderpass!(
+				device.clone(),
+				attachments: { depth: { load: Clear, store: Store, format: DEPTH_FORMAT, samples: 1, } },
+				pass: { color: [], depth_stencil: {depth} }
+			)
+			.unwrap(),
+		);
+		let depth_vs = depth_vs::Shader::load(device.clone()).unwrap();
+		let depth_fs = depth_fs::Shader::load(device.clone()).unwrap();
+
 		let render_pass = Arc::new(
 			vulkano::single_pass_renderpass!(
 				device.clone(),
-				attachments: {
-					color: { load: Clear, store: Store, format: SWAP_FORMAT, samples: 1, }
-				},
+				attachments: { color: { load: Clear, store: Store, format: SWAP_FORMAT, samples: 1, } },
 				pass: { color: [color], depth_stencil: {} }
 			)
 			.unwrap(),
 		);
-
 		let vs = vs3d::Shader::load(device.clone()).unwrap();
 		let fs = fs3d::Shader::load(device.clone()).unwrap();
 
@@ -161,7 +172,19 @@ impl Context3D {
 		let fs_layout = fs3d::Layout(ShaderStages { fragment: true, ..ShaderStages::none() });
 		let layout_desc = Arc::new(vs_layout.union(fs_layout).build(device.clone()).unwrap());
 
-		Self { render_pass, vs, fs, layout_desc }
+		Self { depth_pass, depth_vs, depth_fs, render_pass, vs, fs, layout_desc }
+	}
+
+	fn depth_pass(&self) -> &Arc<dyn RenderPassAbstract + Send + Sync> {
+		&self.depth_pass
+	}
+
+	fn depth_vs(&self) -> &depth_vs::Shader {
+		&self.depth_vs
+	}
+
+	fn depth_fs(&self) -> &depth_fs::Shader {
+		&self.depth_fs
 	}
 
 	fn render_pass(&self) -> &Arc<dyn RenderPassAbstract + Send + Sync> {
@@ -178,6 +201,62 @@ impl Context3D {
 
 	fn layout_desc(&self) -> &Arc<PipelineLayout<PipelineLayoutDescUnion<vs3d::Layout, fs3d::Layout>>> {
 		&self.layout_desc
+	}
+}
+
+pub(crate) mod depth_vs {
+	vulkano_shaders::shader! {
+		ty: "vertex",
+		src: "
+#version 450
+layout(location = 0) in vec3 pos;
+layout(location = 1) in vec3 nor;
+layout(location = 2) in vec2 tex;
+layout(location = 3) in vec2 lmap;
+
+layout(push_constant) uniform PushConsts {
+	vec4 cam_proj;
+	vec3 cam_pos;
+	vec4 cam_rot;
+	vec3 mesh_pos;
+	vec4 mesh_rot;
+} pc;
+
+vec4 perspective(vec4 proj, vec3 pos) {
+	return vec4(pos.xy * proj.xy, pos.z * proj.z + proj.w, -pos.z);
+}
+
+vec4 quat_inv(vec4 quat) {
+	return vec4(-quat.xyz, quat.w) / dot(quat, quat);
+}
+
+vec3 quat_mul(vec4 quat, vec3 vec) {
+	return cross(quat.xyz, cross(quat.xyz, vec) + vec * quat.w) * 2.0 + vec;
+}
+
+void main() {
+	// stupid math library puts w first, so we flip it here
+	vec4 cam_rot = pc.cam_rot.yzwx;
+	vec4 mesh_rot = pc.mesh_rot.yzwx;
+
+	vec3 pos_ws = quat_mul(mesh_rot, pos) + pc.mesh_pos;
+	vec3 pos_cs = quat_mul(quat_inv(cam_rot), pos_ws - pc.cam_pos);
+
+	gl_Position = perspective(pc.cam_proj, pos_cs);
+}"
+	}
+}
+
+pub(crate) mod depth_fs {
+	vulkano_shaders::shader! {
+		ty: "fragment",
+		src: "
+#version 450
+
+void main() {
+	gl_FragDepth = gl_FragCoord.z;
+}
+"
 	}
 }
 
