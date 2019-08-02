@@ -41,7 +41,7 @@ pub fn main() {
 
 	let mut cam = Camera::new();
 	cam.transform_mut().pos = vec3(0.0, 0.0, 3.0);
-	cam.set_perspective(16.0 / 9.0, 90.0, 1.0, 1000.0);
+	cam.set_perspective(16.0 / 9.0, 90.0, 1.0, 50.0);
 
 	ctx_future.join(triangle_future).join(tex_future).then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 

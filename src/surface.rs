@@ -215,6 +215,7 @@ fn create_depth_pipeline(ctx: &Arc<Context>, dimensions: [u32; 2]) -> Arc<dyn Gr
 			.triangle_list()
 			.viewports(vec![Viewport { origin: [0.0, 0.0], dimensions, depth_range: 0.0..1.0 }])
 			.render_pass(Subpass::from(ctx.context_3d().depth_pass().clone(), 0).unwrap())
+			.depth_stencil_simple_depth()
 			.build(ctx.device().clone())
 			.unwrap(),
 	)
