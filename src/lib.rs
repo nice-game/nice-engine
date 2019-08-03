@@ -1,4 +1,5 @@
 pub mod camera;
+pub mod codecs;
 pub mod mesh;
 pub mod mesh_data;
 pub mod pipelines;

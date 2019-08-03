@@ -32,6 +32,12 @@ impl MeshData {
 		Ok((ret, vertices_future.join(indices_future)))
 	}
 
+	pub fn from_bufs(vertices: Arc<dyn BufferAccess + Send + Sync>,
+	indices: Arc<dyn TypedBufferAccess<Content = [u32]> + Send + Sync>,
+	queue: Arc<Queue>) -> Arc<Self> {
+		Arc::new(Self { vertices, indices, queue })
+	}
+
 	pub fn set_vertex_data<T>(&mut self, data: T) -> Result<impl GpuFuture, DeviceMemoryAllocError>
 	where
 		T: Send + Sync + 'static,
