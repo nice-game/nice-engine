@@ -18,10 +18,10 @@ pub fn main() {
 	let (triangle, triangle_future) = MeshData::new(
 		&ctx,
 		[
-			Pntl_32F { pos: [-1.0, -1.0, 0.0], nor: [0.0, 0.0, 1.0], texc: [0.0, 0.0], lmap: [0.0; 2] },
-			Pntl_32F { pos: [1.0, -1.0, 0.0], nor: [0.0, 0.0, 1.0], texc: [1.0, 0.0], lmap: [0.0; 2] },
-			Pntl_32F { pos: [1.0, 1.0, 0.0], nor: [0.0, 0.0, 1.0], texc: [1.0, 1.0], lmap: [0.0; 2] },
-			Pntl_32F { pos: [-1.0, 1.0, 0.0], nor: [0.0, 0.0, 1.0], texc: [0.0, 1.0], lmap: [0.0; 2] },
+			Pntl_32F { pos: [-1.0, 0.0, 1.0], nor: [0.0, -1.0, 0.0], texc: [0.0, 0.0], lmap: [0.0; 2] },
+			Pntl_32F { pos: [1.0, 0.0, 1.0], nor: [0.0, -1.0, 0.0], texc: [1.0, 0.0], lmap: [0.0; 2] },
+			Pntl_32F { pos: [1.0, 0.0, -1.0], nor: [0.0, -1.0, 0.0], texc: [1.0, 1.0], lmap: [0.0; 2] },
+			Pntl_32F { pos: [-1.0, 0.0, -1.0], nor: [0.0, -1.0, 0.0], texc: [0.0, 1.0], lmap: [0.0; 2] },
 		],
 		vec![0, 1, 2, 2, 3, 0].into_iter(),
 	)
@@ -40,7 +40,7 @@ pub fn main() {
 	mesh.set_texture(&tex);
 
 	let mut cam = Camera::new();
-	cam.transform_mut().pos = vec3(0.0, 0.0, 3.0);
+	cam.transform_mut().pos = vec3(0.0, -5.0, 0.0);
 	cam.set_perspective(16.0 / 9.0, 90.0, 1.0, 50.0);
 
 	ctx_future.join(triangle_future).join(tex_future).then_signal_fence_and_flush().unwrap().wait(None).unwrap();

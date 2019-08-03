@@ -56,8 +56,9 @@ void main() {
 
 	vec3 pos_ws = quat_mul(mesh_rot, pos) + pc.mesh_pos;
 	vec3 pos_cs = quat_mul(quat_inv(cam_rot), pos_ws - pc.cam_pos);
+	vec3 pos_es = vec3(pos_cs.x, -pos_cs.z, -pos_cs.y);
 
-	gl_Position = perspective(pc.cam_proj, pos_cs);
+	gl_Position = perspective(pc.cam_proj, pos_es);
 }"
 	}
 }
@@ -116,9 +117,10 @@ void main() {
 
 	vec3 pos_ws = quat_mul(mesh_rot, pos) + pc.mesh_pos;
 	vec3 pos_cs = quat_mul(quat_inv(cam_rot), pos_ws - pc.cam_pos);
+	vec3 pos_es = vec3(pos_cs.x, -pos_cs.z, -pos_cs.y);
 
 	out_texc = tex;
-	gl_Position = perspective(pc.cam_proj, pos_cs);
+	gl_Position = perspective(pc.cam_proj, pos_es);
 }"
 	}
 }
