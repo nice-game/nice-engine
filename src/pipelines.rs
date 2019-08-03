@@ -1,16 +1,19 @@
 pub mod deferred;
 pub mod forward;
 
-use vulkano::device::Queue;
 use crate::{camera::Camera, mesh::Mesh};
 use std::sync::Arc;
 use vulkano::{
-	command_buffer::AutoCommandBuffer, descriptor::PipelineLayoutAbstract, device::Device, image::ImageViewAccess,
+	command_buffer::AutoCommandBuffer,
+	descriptor::PipelineLayoutAbstract,
+	device::{Device, Queue},
+	image::ImageViewAccess,
 	instance::QueueFamily,
+	sync::GpuFuture,
 };
 
 pub trait PipelineDef {
-	fn make_context(device: &Arc<Device>, queue: &Arc<Queue>) -> Box<dyn PipelineContext>;
+	fn make_context(device: &Arc<Device>, queue: &Arc<Queue>) -> (Box<dyn PipelineContext>, Box<dyn GpuFuture>);
 }
 
 pub trait PipelineContext {

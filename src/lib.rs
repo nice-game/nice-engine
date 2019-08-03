@@ -98,7 +98,9 @@ impl Context {
 		)
 		.unwrap();
 
-		let pipeline_ctxs = vec![DeferredPipelineDef::make_context(&device, &queue), ForwardPipelineDef::make_context(&device, &queue)];
+		let (deferred_def, deferred_def_future) = DeferredPipelineDef::make_context(&device, &queue);
+		let (forward_def, forward_def_future) = ForwardPipelineDef::make_context(&device, &queue);
+		let pipeline_ctxs = vec![deferred_def, forward_def];
 		let active_pipeline = 0;
 
 		let (white_pixel, white_pixel_future) = texture::Texture::from_iter_vk(
@@ -111,7 +113,7 @@ impl Context {
 
 		Ok((
 			Arc::new(Self { instance, device, queue, sampler, pipeline_ctxs, active_pipeline, white_pixel }),
-			white_pixel_future,
+			white_pixel_future.join(deferred_def_future).join(forward_def_future),
 		))
 	}
 

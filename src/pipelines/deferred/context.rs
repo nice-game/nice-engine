@@ -20,7 +20,7 @@ pub struct DeferredPipelineContext {
 	inner: Arc<DeferredPipelineContextInner>,
 }
 impl DeferredPipelineContext {
-	pub(crate) fn new(device: &Arc<Device>, queue: &Arc<Queue>) -> Self {
+	pub(crate) fn new(device: &Arc<Device>, queue: &Arc<Queue>) -> (Self, impl GpuFuture) {
 		let render_pass = Arc::new(
 			vulkano::ordered_passes_renderpass!(
 				device.clone(),
@@ -61,21 +61,23 @@ impl DeferredPipelineContext {
 		let (indices, indices_future) =
 			ImmutableBuffer::from_iter(vec![0, 1, 2, 2, 3, 0].into_iter(), BufferUsage::index_buffer(), queue.clone())
 				.unwrap();
-		vertices_future.join(indices_future).then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 
-		Self {
-			inner: Arc::new(DeferredPipelineContextInner {
-				render_pass,
-				geom_vshader,
-				geom_fshader,
-				layout_desc,
-				swap_vshader,
-				swap_fshader,
-				swap_layout_desc,
-				vertices,
-				indices,
-			}),
-		}
+		(
+			Self {
+				inner: Arc::new(DeferredPipelineContextInner {
+					render_pass,
+					geom_vshader,
+					geom_fshader,
+					layout_desc,
+					swap_vshader,
+					swap_fshader,
+					swap_layout_desc,
+					vertices,
+					indices,
+				}),
+			},
+			vertices_future.join(indices_future),
+		)
 	}
 }
 impl PipelineContext for DeferredPipelineContext {

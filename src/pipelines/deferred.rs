@@ -2,6 +2,7 @@ mod context;
 mod pipeline;
 
 pub use self::context::DeferredPipelineContext;
+use vulkano::sync::GpuFuture;
 
 use crate::pipelines::{PipelineContext, PipelineDef};
 use std::sync::Arc;
@@ -16,8 +17,9 @@ pub const DEPTH_FORMAT: Format = Format::D16Unorm;
 
 pub struct DeferredPipelineDef;
 impl PipelineDef for DeferredPipelineDef {
-	fn make_context(device: &Arc<Device>, queue: &Arc<Queue>) -> Box<dyn PipelineContext> {
-		Box::new(DeferredPipelineContext::new(device, queue))
+	fn make_context(device: &Arc<Device>, queue: &Arc<Queue>) -> (Box<dyn PipelineContext>, Box<dyn GpuFuture>) {
+		let (pctx, future) = DeferredPipelineContext::new(device, queue);
+		(Box::new(pctx), Box::new(future))
 	}
 }
 
