@@ -1,5 +1,7 @@
+pub mod deferred;
 pub mod forward;
 
+use vulkano::device::Queue;
 use crate::{camera::Camera, mesh::Mesh};
 use std::sync::Arc;
 use vulkano::{
@@ -8,7 +10,7 @@ use vulkano::{
 };
 
 pub trait PipelineDef {
-	fn make_context(device: &Arc<Device>) -> Box<dyn PipelineContext>;
+	fn make_context(device: &Arc<Device>, queue: &Arc<Queue>) -> Box<dyn PipelineContext>;
 }
 
 pub trait PipelineContext {

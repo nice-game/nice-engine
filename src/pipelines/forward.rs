@@ -9,7 +9,7 @@ use std::sync::Arc;
 use vulkano::{
 	command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder},
 	descriptor::{descriptor::ShaderStages, pipeline_layout::PipelineLayoutDesc, PipelineLayoutAbstract},
-	device::Device,
+	device::{Device, Queue},
 	format::Format,
 	framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass},
 	image::{AttachmentImage, ImageViewAccess},
@@ -21,7 +21,7 @@ pub const DEPTH_FORMAT: Format = Format::D16Unorm;
 
 pub struct ForwardPipelineDef;
 impl PipelineDef for ForwardPipelineDef {
-	fn make_context(device: &Arc<Device>) -> Box<dyn PipelineContext> {
+	fn make_context(device: &Arc<Device>, _queue: &Arc<Queue>) -> Box<dyn PipelineContext> {
 		Box::new(ForwardPipelineContext::new(device))
 	}
 }

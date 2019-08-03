@@ -8,7 +8,7 @@ pub mod transform;
 #[cfg(feature = "window")]
 pub mod window;
 
-use crate::pipelines::{forward::ForwardPipelineDef, PipelineContext, PipelineDef};
+use crate::pipelines::{deferred::DeferredPipelineDef, forward::ForwardPipelineDef, PipelineContext, PipelineDef};
 use log::info;
 use std::sync::Arc;
 use vulkano::{
@@ -98,7 +98,7 @@ impl Context {
 		)
 		.unwrap();
 
-		let pipeline_ctxs = vec![ForwardPipelineDef::make_context(&device)];
+		let pipeline_ctxs = vec![DeferredPipelineDef::make_context(&device, &queue), ForwardPipelineDef::make_context(&device, &queue)];
 		let active_pipeline = 0;
 
 		let (white_pixel, white_pixel_future) = texture::Texture::from_iter_vk(
