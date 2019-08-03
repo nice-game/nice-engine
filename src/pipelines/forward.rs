@@ -1,24 +1,16 @@
-use crate::{
-	camera::Camera,
-	mesh::Mesh,
-	mesh_data,
-	pipelines::{Pipeline, PipelineContext, PipelineDef},
-	surface::SWAP_FORMAT,
-};
+mod context;
+mod pipeline;
+
+use self::context::ForwardPipelineContext;
+use crate::pipelines::{PipelineContext, PipelineDef};
 use std::sync::Arc;
 use vulkano::{
-	command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder},
-	descriptor::{descriptor::ShaderStages, pipeline_layout::PipelineLayoutDesc, PipelineLayoutAbstract},
 	device::{Device, Queue},
 	format::Format,
-	framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass},
-	image::{AttachmentImage, ImageViewAccess},
-	instance::QueueFamily,
-	pipeline::{viewport::Viewport, GraphicsPipeline, GraphicsPipelineAbstract},
 	sync::{self, GpuFuture},
 };
 
-pub const DEPTH_FORMAT: Format = Format::D16Unorm;
+const DEPTH_FORMAT: Format = Format::D16Unorm;
 
 pub struct ForwardPipelineDef;
 impl PipelineDef for ForwardPipelineDef {
@@ -27,224 +19,7 @@ impl PipelineDef for ForwardPipelineDef {
 	}
 }
 
-pub struct ForwardPipelineContext {
-	inner: Arc<ForwardPipelineContextInner>,
-}
-impl ForwardPipelineContext {
-	fn new(device: &Arc<Device>) -> Self {
-		let depth_pass = Arc::new(
-			vulkano::single_pass_renderpass!(
-				device.clone(),
-				attachments: { depth: { load: Clear, store: Store, format: DEPTH_FORMAT, samples: 1, } },
-				pass: { color: [], depth_stencil: {depth} }
-			)
-			.unwrap(),
-		);
-		let depth_vshader = depth_vshader::Shader::load(device.clone()).unwrap();
-		let depth_fshader = depth_fshader::Shader::load(device.clone()).unwrap();
-
-		let swap_pass = Arc::new(
-			vulkano::single_pass_renderpass!(
-				device.clone(),
-				attachments: { color: { load: Clear, store: Store, format: SWAP_FORMAT, samples: 1, } },
-				pass: { color: [color], depth_stencil: {} }
-			)
-			.unwrap(),
-		);
-		let swap_vshader = swap_vshader::Shader::load(device.clone()).unwrap();
-		let swap_fshader = swap_fshader::Shader::load(device.clone()).unwrap();
-
-		let vs_layout = swap_vshader::Layout(ShaderStages { vertex: true, ..ShaderStages::none() });
-		let fs_layout = swap_fshader::Layout(ShaderStages { fragment: true, ..ShaderStages::none() });
-		let layout_desc = Arc::new(vs_layout.union(fs_layout).build(device.clone()).unwrap());
-
-		Self {
-			inner: Arc::new(ForwardPipelineContextInner {
-				depth_pass,
-				depth_vshader,
-				depth_fshader,
-				swap_pass,
-				swap_vshader,
-				swap_fshader,
-				layout_desc,
-			}),
-		}
-	}
-}
-impl PipelineContext for ForwardPipelineContext {
-	fn make_pipeline(
-		&self,
-		images: Vec<Arc<dyn ImageViewAccess + Send + Sync>>,
-		dimensions: [u32; 2],
-	) -> Box<dyn Pipeline> {
-		Box::new(ForwardPipeline::new(self.inner.clone(), images, dimensions))
-	}
-
-	fn layout_desc(&self) -> &Arc<dyn PipelineLayoutAbstract + Send + Sync> {
-		&self.inner.layout_desc
-	}
-}
-
-struct ForwardPipeline {
-	ctx: Arc<ForwardPipelineContextInner>,
-	depth_pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
-	depth_framebuffer: Arc<dyn FramebufferAbstract + Send + Sync>,
-	pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
-	framebuffers: Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
-}
-impl ForwardPipeline {
-	fn new(
-		ctx: Arc<ForwardPipelineContextInner>,
-		images: Vec<Arc<dyn ImageViewAccess + Send + Sync>>,
-		dimensions: [u32; 2],
-	) -> Self {
-		let depth_pipeline =
-			create_depth_pipeline(&ctx.depth_vshader, &ctx.depth_fshader, ctx.depth_pass.clone(), dimensions);
-		let depth_image =
-			Arc::new(AttachmentImage::new(ctx.depth_pass.device().clone(), dimensions, DEPTH_FORMAT).unwrap());
-		let depth_framebuffer =
-			Arc::new(Framebuffer::start(ctx.depth_pass.clone()).add(depth_image.clone()).unwrap().build().unwrap());
-		let pipeline = create_pipeline_3d(&ctx.swap_vshader, &ctx.swap_fshader, ctx.swap_pass.clone(), dimensions);
-		let framebuffers = create_framebuffers(&ctx.swap_pass, images);
-
-		Self { ctx, depth_pipeline, depth_framebuffer, pipeline, framebuffers }
-	}
-}
-impl Pipeline for ForwardPipeline {
-	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[&Mesh]) -> AutoCommandBuffer {
-		let clear_values = vec![[0.0, 0.0, 0.25, 1.0].into()];
-
-		let make_pc = |mesh: &Mesh| swap_vshader::ty::PushConsts {
-			cam_proj: cam.projection().into(),
-			cam_pos: cam.transform().pos.into(),
-			cam_rot: cam.transform().rot.into(),
-			mesh_pos: mesh.transform().pos.into(),
-			mesh_rot: mesh.transform().rot.into(),
-			_dummy0: unsafe { std::mem::uninitialized() },
-			_dummy1: unsafe { std::mem::uninitialized() },
-		};
-
-		let mut command_buffer =
-			AutoCommandBufferBuilder::primary_one_time_submit(self.ctx.depth_pass.device().clone(), qfam)
-				.unwrap()
-				.begin_render_pass(self.depth_framebuffer.clone(), false, vec![1.0.into()])
-				.unwrap();
-		for mesh in meshes {
-			let mesh_data = mesh.mesh_data().as_ref().unwrap();
-			command_buffer = command_buffer
-				.draw_indexed(
-					self.depth_pipeline.clone(),
-					&Default::default(),
-					vec![mesh_data.vertices().clone()],
-					mesh_data.indices().clone(),
-					(),
-					make_pc(mesh),
-				)
-				.unwrap();
-		}
-
-		command_buffer = command_buffer
-			.end_render_pass()
-			.unwrap()
-			.begin_render_pass(self.framebuffers[image_num].clone(), false, clear_values)
-			.unwrap();
-		for mesh in meshes {
-			let mesh_data = mesh.mesh_data().as_ref().unwrap();
-			command_buffer = command_buffer
-				.draw_indexed(
-					self.pipeline.clone(),
-					&Default::default(),
-					vec![mesh_data.vertices().clone()],
-					mesh_data.indices().clone(),
-					mesh.texture_desc().clone(),
-					make_pc(mesh),
-				)
-				.unwrap();
-		}
-
-		command_buffer.end_render_pass().unwrap().build().unwrap()
-	}
-
-	fn resize(&mut self, images: Vec<Arc<dyn ImageViewAccess + Send + Sync>>, dimensions: [u32; 2]) {
-		self.depth_pipeline = create_depth_pipeline(
-			&self.ctx.depth_vshader,
-			&self.ctx.depth_fshader,
-			self.ctx.depth_pass.clone(),
-			dimensions,
-		);
-		self.pipeline =
-			create_pipeline_3d(&self.ctx.swap_vshader, &self.ctx.swap_fshader, self.ctx.swap_pass.clone(), dimensions);
-		self.framebuffers = create_framebuffers(&self.ctx.swap_pass, images);
-	}
-}
-
-struct ForwardPipelineContextInner {
-	depth_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-	depth_vshader: depth_vshader::Shader,
-	depth_fshader: depth_fshader::Shader,
-	swap_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-	swap_vshader: swap_vshader::Shader,
-	swap_fshader: swap_fshader::Shader,
-	layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
-}
-
-fn create_framebuffers(
-	swap_pass: &Arc<dyn RenderPassAbstract + Send + Sync>,
-	images: Vec<Arc<dyn ImageViewAccess + Send + Sync>>,
-) -> Vec<Arc<dyn FramebufferAbstract + Send + Sync>> {
-	images
-		.into_iter()
-		.map(move |image| {
-			Arc::new(Framebuffer::start(swap_pass.clone()).add(image).unwrap().build().unwrap())
-				as Arc<dyn FramebufferAbstract + Send + Sync>
-		})
-		.collect()
-}
-
-fn create_depth_pipeline(
-	vshader: &depth_vshader::Shader,
-	fshader: &depth_fshader::Shader,
-	swap_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-	dimensions: [u32; 2],
-) -> Arc<dyn GraphicsPipelineAbstract + Send + Sync> {
-	let dimensions = [dimensions[0] as f32, dimensions[1] as f32];
-	let device = swap_pass.device().clone();
-	Arc::new(
-		GraphicsPipeline::start()
-			.vertex_input_single_buffer::<mesh_data::Pntl_32F>()
-			.vertex_shader(vshader.main_entry_point(), ())
-			.fragment_shader(fshader.main_entry_point(), ())
-			.triangle_list()
-			.viewports(vec![Viewport { origin: [0.0, 0.0], dimensions, depth_range: 0.0..1.0 }])
-			.render_pass(Subpass::from(swap_pass, 0).unwrap())
-			.depth_stencil_simple_depth()
-			.build(device)
-			.unwrap(),
-	)
-}
-
-fn create_pipeline_3d(
-	vshader: &swap_vshader::Shader,
-	fshader: &swap_fshader::Shader,
-	swap_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-	dimensions: [u32; 2],
-) -> Arc<dyn GraphicsPipelineAbstract + Send + Sync> {
-	let dimensions = [dimensions[0] as f32, dimensions[1] as f32];
-	let device = swap_pass.device().clone();
-	Arc::new(
-		GraphicsPipeline::start()
-			.vertex_input_single_buffer::<mesh_data::Pntl_32F>()
-			.vertex_shader(vshader.main_entry_point(), ())
-			.fragment_shader(fshader.main_entry_point(), ())
-			.triangle_list()
-			.viewports(vec![Viewport { origin: [0.0, 0.0], dimensions, depth_range: 0.0..1.0 }])
-			.render_pass(Subpass::from(swap_pass, 0).unwrap())
-			.build(device)
-			.unwrap(),
-	)
-}
-
-pub(crate) mod depth_vshader {
+mod depth_vshader {
 	vulkano_shaders::shader! {
 		ty: "vertex",
 		src: "
@@ -287,7 +62,7 @@ void main() {
 	}
 }
 
-pub(crate) mod depth_fshader {
+mod depth_fshader {
 	vulkano_shaders::shader! {
 		ty: "fragment",
 		src: "
@@ -300,7 +75,7 @@ void main() {
 	}
 }
 
-pub(crate) mod swap_vshader {
+mod swap_vshader {
 	vulkano_shaders::shader! {
 		ty: "vertex",
 		src: "
@@ -348,7 +123,7 @@ void main() {
 	}
 }
 
-pub(crate) mod swap_fshader {
+mod swap_fshader {
 	vulkano_shaders::shader! {
 		ty: "fragment",
 		src: "

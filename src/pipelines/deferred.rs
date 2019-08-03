@@ -1,7 +1,7 @@
 mod context;
 mod pipeline;
 
-pub use self::context::DeferredPipelineContext;
+use self::context::DeferredPipelineContext;
 use vulkano::sync::GpuFuture;
 
 use crate::pipelines::{PipelineContext, PipelineDef};
@@ -11,9 +11,9 @@ use vulkano::{
 	format::Format,
 };
 
-pub const DIFFUSE_FORMAT: Format = Format::A2B10G10R10UnormPack32;
-pub const NORMAL_FORMAT: Format = Format::R16G16B16A16Sfloat;
-pub const DEPTH_FORMAT: Format = Format::D16Unorm;
+const DIFFUSE_FORMAT: Format = Format::A2B10G10R10UnormPack32;
+const NORMAL_FORMAT: Format = Format::R16G16B16A16Sfloat;
+const DEPTH_FORMAT: Format = Format::D16Unorm;
 
 pub struct DeferredPipelineDef;
 impl PipelineDef for DeferredPipelineDef {
@@ -26,8 +26,8 @@ impl PipelineDef for DeferredPipelineDef {
 #[derive(Default, Debug, Clone, Copy)]
 #[repr(C)]
 struct Vert2D {
-	pub pos: [f32; 2],
-	pub texc: [f32; 2],
+	pos: [f32; 2],
+	texc: [f32; 2],
 }
 vulkano::impl_vertex!(Vert2D, pos, texc);
 

@@ -16,11 +16,11 @@ use vulkano::{
 	sync::GpuFuture,
 };
 
-pub struct DeferredPipelineContext {
+pub(super) struct DeferredPipelineContext {
 	inner: Arc<DeferredPipelineContextInner>,
 }
 impl DeferredPipelineContext {
-	pub(crate) fn new(device: &Arc<Device>, queue: &Arc<Queue>) -> (Self, impl GpuFuture) {
+	pub(super) fn new(device: &Arc<Device>, queue: &Arc<Queue>) -> (Self, impl GpuFuture) {
 		let render_pass = Arc::new(
 			vulkano::ordered_passes_renderpass!(
 				device.clone(),
@@ -94,14 +94,14 @@ impl PipelineContext for DeferredPipelineContext {
 	}
 }
 
-pub(crate) struct DeferredPipelineContextInner {
-	pub(crate) render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-	pub(crate) geom_vshader: geom_vshader::Shader,
-	pub(crate) geom_fshader: geom_fshader::Shader,
-	pub(crate) layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
-	pub(crate) swap_vshader: swap_vshader::Shader,
-	pub(crate) swap_fshader: swap_fshader::Shader,
-	pub(crate) swap_layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
-	pub(crate) vertices: Arc<dyn BufferAccess + Send + Sync>,
-	pub(crate) indices: Arc<dyn TypedBufferAccess<Content = [u32]> + Send + Sync>,
+pub(super) struct DeferredPipelineContextInner {
+	pub(super) render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
+	pub(super) geom_vshader: geom_vshader::Shader,
+	pub(super) geom_fshader: geom_fshader::Shader,
+	pub(super) layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
+	pub(super) swap_vshader: swap_vshader::Shader,
+	pub(super) swap_fshader: swap_fshader::Shader,
+	pub(super) swap_layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
+	pub(super) vertices: Arc<dyn BufferAccess + Send + Sync>,
+	pub(super) indices: Arc<dyn TypedBufferAccess<Content = [u32]> + Send + Sync>,
 }

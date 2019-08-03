@@ -13,7 +13,7 @@ use vulkano::{
 	pipeline::{viewport::Viewport, GraphicsPipeline, GraphicsPipelineAbstract},
 };
 
-pub(crate) struct DeferredPipeline {
+pub(super) struct DeferredPipeline {
 	ctx: Arc<DeferredPipelineContextInner>,
 	geom_pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
 	swap_pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
@@ -21,7 +21,7 @@ pub(crate) struct DeferredPipeline {
 	gbuffers_desc: Arc<dyn DescriptorSet + Send + Sync>,
 }
 impl DeferredPipeline {
-	pub(crate) fn new(
+	pub(super) fn new(
 		ctx: Arc<DeferredPipelineContextInner>,
 		images: Vec<Arc<dyn ImageViewAccess + Send + Sync>>,
 		dimensions: [u32; 2],
