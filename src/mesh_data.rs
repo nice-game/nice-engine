@@ -68,31 +68,31 @@ impl MeshData {
 pub struct Pntl_32F {
 	pub pos: [f32; 3],
 	pub nor: [f32; 3],
-	pub tex: [f32; 2],
+	pub texc: [f32; 2],
 	pub lmap: [f32; 2],
 }
-vulkano::impl_vertex!(Pntl_32F, pos, nor, tex, lmap);
+vulkano::impl_vertex!(Pntl_32F, pos, nor, texc, lmap);
 
 #[derive(Default, Debug, Clone, Copy)]
 #[repr(C)]
 pub struct Pntlb3_32F {
 	pub pos: [f32; 3],
 	pub nor: [f32; 3],
-	pub tex: [f32; 2],
+	pub texc: [f32; 2],
 	pub lmap: [f32; 2],
 	pub bone_ids: [f32; 3],
 	pub bone_weights: [f32; 3],
 }
-vulkano::impl_vertex!(Pntlb3_32F, pos, nor, tex, lmap, bone_ids, bone_weights);
+vulkano::impl_vertex!(Pntlb3_32F, pos, nor, texc, lmap, bone_ids, bone_weights);
 
 #[derive(Default, Debug, Clone, Copy)]
 #[repr(C)]
 pub struct Pntlb7_32F {
 	pub pos: [f32; 3],
 	pub nor: [f32; 3],
-	pub tex: [f32; 2],
+	pub texc: [f32; 2],
 	pub lmap: [f32; 2],
 	pub bone_ids: [f32; 7],
 	pub bone_weights: [f32; 7],
 }
-vulkano::impl_vertex!(Pntlb7_32F, pos, nor, tex, lmap, bone_ids, bone_weights);
+vulkano::impl_vertex!(Pntlb7_32F, pos, nor, texc, lmap, bone_ids, bone_weights);
