@@ -7,6 +7,7 @@ use std::sync::Arc;
 use vulkano::{
 	command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder},
 	descriptor::{descriptor_set::PersistentDescriptorSet, DescriptorSet, PipelineLayoutAbstract},
+	device::Device,
 	framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass},
 	image::{AttachmentImage, ImageViewAccess},
 	instance::QueueFamily,
@@ -31,28 +32,9 @@ impl DeferredPipeline {
 		let swap_pipeline =
 			create_swap_pipeline(&ctx.swap_vshader, &ctx.swap_fshader, ctx.render_pass.clone(), dimensions);
 
-		let diffuse_image = Arc::new(
-			AttachmentImage::transient_input_attachment(ctx.render_pass.device().clone(), dimensions, DIFFUSE_FORMAT)
-				.unwrap(),
-		);
-		let normal_image = Arc::new(
-			AttachmentImage::transient_input_attachment(ctx.render_pass.device().clone(), dimensions, NORMAL_FORMAT)
-				.unwrap(),
-		);
-		let depth_image = Arc::new(
-			AttachmentImage::transient_input_attachment(ctx.render_pass.device().clone(), dimensions, DEPTH_FORMAT)
-				.unwrap(),
-		);
-
-		let framebuffers = create_framebuffers(
-			&ctx.render_pass,
-			diffuse_image.clone(),
-			normal_image.clone(),
-			depth_image.clone(),
-			images,
-		);
-		let gbuffers_desc =
-			make_gbuffers_desc_set(ctx.swap_layout_desc.clone(), diffuse_image, normal_image, depth_image);
+		let gbuffers = create_gbuffers(ctx.render_pass.device(), dimensions);
+		let framebuffers = create_framebuffers(&ctx.render_pass, &gbuffers, images);
+		let gbuffers_desc = make_gbuffers_desc_set(ctx.swap_layout_desc.clone(), &gbuffers);
 
 		Self { ctx, geom_pipeline, swap_pipeline, framebuffers, gbuffers_desc }
 	}
@@ -122,48 +104,15 @@ impl Pipeline for DeferredPipeline {
 			dimensions,
 		);
 
-		let diffuse_image = Arc::new(
-			AttachmentImage::transient_input_attachment(
-				self.ctx.render_pass.device().clone(),
-				dimensions,
-				DIFFUSE_FORMAT,
-			)
-			.unwrap(),
-		);
-		let normal_image = Arc::new(
-			AttachmentImage::transient_input_attachment(
-				self.ctx.render_pass.device().clone(),
-				dimensions,
-				NORMAL_FORMAT,
-			)
-			.unwrap(),
-		);
-		let depth_image = Arc::new(
-			AttachmentImage::transient_input_attachment(
-				self.ctx.render_pass.device().clone(),
-				dimensions,
-				DEPTH_FORMAT,
-			)
-			.unwrap(),
-		);
-		self.framebuffers = create_framebuffers(
-			&self.ctx.render_pass,
-			diffuse_image.clone(),
-			normal_image.clone(),
-			depth_image.clone(),
-			images,
-		);
-
-		self.gbuffers_desc =
-			make_gbuffers_desc_set(self.ctx.swap_layout_desc.clone(), diffuse_image, normal_image, depth_image);
+		let gbuffers = create_gbuffers(self.ctx.render_pass.device(), dimensions);
+		self.framebuffers = create_framebuffers(&self.ctx.render_pass, &gbuffers, images);
+		self.gbuffers_desc = make_gbuffers_desc_set(self.ctx.swap_layout_desc.clone(), &gbuffers);
 	}
 }
 
 fn create_framebuffers(
 	swap_pass: &Arc<dyn RenderPassAbstract + Send + Sync>,
-	diffuse: Arc<dyn ImageViewAccess + Send + Sync>,
-	normal: Arc<dyn ImageViewAccess + Send + Sync>,
-	depth: Arc<dyn ImageViewAccess + Send + Sync>,
+	gbuffers: &GBuffers,
 	images: Vec<Arc<dyn ImageViewAccess + Send + Sync>>,
 ) -> Vec<Arc<dyn FramebufferAbstract + Send + Sync>> {
 	images
@@ -171,11 +120,11 @@ fn create_framebuffers(
 		.map(|image| {
 			Arc::new(
 				Framebuffer::start(swap_pass.clone())
-					.add(diffuse.clone())
+					.add(gbuffers.diffuse.clone())
 					.unwrap()
-					.add(normal.clone())
+					.add(gbuffers.normal.clone())
 					.unwrap()
-					.add(depth.clone())
+					.add(gbuffers.depth.clone())
 					.unwrap()
 					.add(image)
 					.unwrap()
@@ -184,6 +133,23 @@ fn create_framebuffers(
 			) as Arc<dyn FramebufferAbstract + Send + Sync>
 		})
 		.collect()
+}
+
+fn create_gbuffers(device: &Arc<Device>, dimensions: [u32; 2]) -> GBuffers {
+	let diffuse =
+		Arc::new(AttachmentImage::transient_input_attachment(device.clone(), dimensions, DIFFUSE_FORMAT).unwrap());
+	let normal =
+		Arc::new(AttachmentImage::transient_input_attachment(device.clone(), dimensions, NORMAL_FORMAT).unwrap());
+	let depth =
+		Arc::new(AttachmentImage::transient_input_attachment(device.clone(), dimensions, DEPTH_FORMAT).unwrap());
+
+	GBuffers { diffuse, normal, depth }
+}
+
+struct GBuffers {
+	diffuse: Arc<dyn ImageViewAccess + Send + Sync>,
+	normal: Arc<dyn ImageViewAccess + Send + Sync>,
+	depth: Arc<dyn ImageViewAccess + Send + Sync>,
 }
 
 fn create_geom_pipeline(
@@ -229,22 +195,17 @@ fn create_swap_pipeline(
 	)
 }
 
-fn make_gbuffers_desc_set<L>(
-	layout: L,
-	diffuse: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
-	normal: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
-	depth: Arc<dyn ImageViewAccess + Send + Sync + 'static>,
-) -> Arc<dyn DescriptorSet + Send + Sync>
+fn make_gbuffers_desc_set<L>(layout: L, gbuffers: &GBuffers) -> Arc<dyn DescriptorSet + Send + Sync>
 where
 	L: PipelineLayoutAbstract + Send + Sync + 'static,
 {
 	Arc::new(
 		PersistentDescriptorSet::start(layout, 0)
-			.add_image(diffuse)
+			.add_image(gbuffers.diffuse.clone())
 			.unwrap()
-			.add_image(normal)
+			.add_image(gbuffers.normal.clone())
 			.unwrap()
-			.add_image(depth)
+			.add_image(gbuffers.depth.clone())
 			.unwrap()
 			.build()
 			.unwrap(),
