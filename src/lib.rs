@@ -1,23 +1,19 @@
 pub mod camera;
 pub mod mesh;
 pub mod mesh_data;
+pub mod pipelines;
 pub mod surface;
 pub mod texture;
 pub mod transform;
 #[cfg(feature = "window")]
 pub mod window;
 
-use crate::surface::{DEPTH_FORMAT, SWAP_FORMAT};
+use crate::pipelines::{forward::ForwardPipelineDef, PipelineContext, PipelineDef};
 use log::info;
 use std::sync::Arc;
 use vulkano::{
-	descriptor::{
-		descriptor::ShaderStages,
-		pipeline_layout::{PipelineLayout, PipelineLayoutDesc, PipelineLayoutDescUnion},
-	},
 	device::{Device, DeviceExtensions, Features, Queue},
 	format::Format,
-	framebuffer::RenderPassAbstract,
 	image::Dimensions,
 	instance::{ApplicationInfo, Instance, InstanceExtensions, PhysicalDevice},
 	sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode},
@@ -33,7 +29,8 @@ pub struct Context {
 	device: Arc<Device>,
 	queue: Arc<Queue>,
 	sampler: Arc<Sampler>,
-	context_3d: Context3D,
+	pipeline_ctxs: Vec<Box<dyn PipelineContext>>,
+	active_pipeline: usize,
 	white_pixel: texture::Texture,
 }
 impl Context {
@@ -101,7 +98,8 @@ impl Context {
 		)
 		.unwrap();
 
-		let context_3d = Context3D::new(&device);
+		let pipeline_ctxs = vec![ForwardPipelineDef::make_context(&device)];
+		let active_pipeline = 0;
 
 		let (white_pixel, white_pixel_future) = texture::Texture::from_iter_vk(
 			queue.clone(),
@@ -111,7 +109,10 @@ impl Context {
 		)
 		.unwrap();
 
-		Ok((Arc::new(Self { instance, device, queue, sampler, context_3d, white_pixel }), white_pixel_future))
+		Ok((
+			Arc::new(Self { instance, device, queue, sampler, pipeline_ctxs, active_pipeline, white_pixel }),
+			white_pixel_future,
+		))
 	}
 
 	fn device(&self) -> &Arc<Device> {
@@ -126,203 +127,12 @@ impl Context {
 		&self.sampler
 	}
 
-	fn context_3d(&self) -> &Context3D {
-		&self.context_3d
+	fn pipeline_ctx(&self) -> &dyn PipelineContext {
+		self.pipeline_ctxs[self.active_pipeline].as_ref()
 	}
 
 	fn white_pixel(&self) -> &texture::Texture {
 		&self.white_pixel
-	}
-}
-
-struct Context3D {
-	depth_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-	depth_vs: depth_vs::Shader,
-	depth_fs: depth_fs::Shader,
-	render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-	vs: vs3d::Shader,
-	fs: fs3d::Shader,
-	layout_desc: Arc<PipelineLayout<PipelineLayoutDescUnion<vs3d::Layout, fs3d::Layout>>>,
-}
-impl Context3D {
-	fn new(device: &Arc<Device>) -> Self {
-		let depth_pass = Arc::new(
-			vulkano::single_pass_renderpass!(
-				device.clone(),
-				attachments: { depth: { load: Clear, store: Store, format: DEPTH_FORMAT, samples: 1, } },
-				pass: { color: [], depth_stencil: {depth} }
-			)
-			.unwrap(),
-		);
-		let depth_vs = depth_vs::Shader::load(device.clone()).unwrap();
-		let depth_fs = depth_fs::Shader::load(device.clone()).unwrap();
-
-		let render_pass = Arc::new(
-			vulkano::single_pass_renderpass!(
-				device.clone(),
-				attachments: { color: { load: Clear, store: Store, format: SWAP_FORMAT, samples: 1, } },
-				pass: { color: [color], depth_stencil: {} }
-			)
-			.unwrap(),
-		);
-		let vs = vs3d::Shader::load(device.clone()).unwrap();
-		let fs = fs3d::Shader::load(device.clone()).unwrap();
-
-		let vs_layout = vs3d::Layout(ShaderStages { vertex: true, ..ShaderStages::none() });
-		let fs_layout = fs3d::Layout(ShaderStages { fragment: true, ..ShaderStages::none() });
-		let layout_desc = Arc::new(vs_layout.union(fs_layout).build(device.clone()).unwrap());
-
-		Self { depth_pass, depth_vs, depth_fs, render_pass, vs, fs, layout_desc }
-	}
-
-	fn depth_pass(&self) -> &Arc<dyn RenderPassAbstract + Send + Sync> {
-		&self.depth_pass
-	}
-
-	fn depth_vs(&self) -> &depth_vs::Shader {
-		&self.depth_vs
-	}
-
-	fn depth_fs(&self) -> &depth_fs::Shader {
-		&self.depth_fs
-	}
-
-	fn render_pass(&self) -> &Arc<dyn RenderPassAbstract + Send + Sync> {
-		&self.render_pass
-	}
-
-	fn vertex_shader(&self) -> &vs3d::Shader {
-		&self.vs
-	}
-
-	fn fragment_shader(&self) -> &fs3d::Shader {
-		&self.fs
-	}
-
-	fn layout_desc(&self) -> &Arc<PipelineLayout<PipelineLayoutDescUnion<vs3d::Layout, fs3d::Layout>>> {
-		&self.layout_desc
-	}
-}
-
-pub(crate) mod depth_vs {
-	vulkano_shaders::shader! {
-		ty: "vertex",
-		src: "
-#version 450
-layout(location = 0) in vec3 pos;
-layout(location = 1) in vec3 nor;
-layout(location = 2) in vec2 tex;
-layout(location = 3) in vec2 lmap;
-
-layout(push_constant) uniform PushConsts {
-	vec4 cam_proj;
-	vec3 cam_pos;
-	vec4 cam_rot;
-	vec3 mesh_pos;
-	vec4 mesh_rot;
-} pc;
-
-vec4 perspective(vec4 proj, vec3 pos) {
-	return vec4(pos.xy * proj.xy, pos.z * proj.z + proj.w, -pos.z);
-}
-
-vec4 quat_inv(vec4 quat) {
-	return vec4(-quat.xyz, quat.w) / dot(quat, quat);
-}
-
-vec3 quat_mul(vec4 quat, vec3 vec) {
-	return cross(quat.xyz, cross(quat.xyz, vec) + vec * quat.w) * 2.0 + vec;
-}
-
-void main() {
-	// stupid math library puts w first, so we flip it here
-	vec4 cam_rot = pc.cam_rot.yzwx;
-	vec4 mesh_rot = pc.mesh_rot.yzwx;
-
-	vec3 pos_ws = quat_mul(mesh_rot, pos) + pc.mesh_pos;
-	vec3 pos_cs = quat_mul(quat_inv(cam_rot), pos_ws - pc.cam_pos);
-
-	gl_Position = perspective(pc.cam_proj, pos_cs);
-}"
-	}
-}
-
-pub(crate) mod depth_fs {
-	vulkano_shaders::shader! {
-		ty: "fragment",
-		src: "
-#version 450
-
-void main() {
-	gl_FragDepth = gl_FragCoord.z;
-}
-"
-	}
-}
-
-pub(crate) mod vs3d {
-	vulkano_shaders::shader! {
-		ty: "vertex",
-		src: "
-#version 450
-layout(location = 0) in vec3 pos;
-layout(location = 1) in vec3 nor;
-layout(location = 2) in vec2 tex;
-layout(location = 3) in vec2 lmap;
-
-layout(location = 0) out vec2 out_texc;
-
-layout(push_constant) uniform PushConsts {
-	vec4 cam_proj;
-	vec3 cam_pos;
-	vec4 cam_rot;
-	vec3 mesh_pos;
-	vec4 mesh_rot;
-} pc;
-
-layout(set = 0, binding = 0) uniform sampler2D tex1;
-
-vec4 perspective(vec4 proj, vec3 pos) {
-	return vec4(pos.xy * proj.xy, pos.z * proj.z + proj.w, -pos.z);
-}
-
-vec4 quat_inv(vec4 quat) {
-	return vec4(-quat.xyz, quat.w) / dot(quat, quat);
-}
-
-vec3 quat_mul(vec4 quat, vec3 vec) {
-	return cross(quat.xyz, cross(quat.xyz, vec) + vec * quat.w) * 2.0 + vec;
-}
-
-void main() {
-	// stupid math library puts w first, so we flip it here
-	vec4 cam_rot = pc.cam_rot.yzwx;
-	vec4 mesh_rot = pc.mesh_rot.yzwx;
-
-	vec3 pos_ws = quat_mul(mesh_rot, pos) + pc.mesh_pos;
-	vec3 pos_cs = quat_mul(quat_inv(cam_rot), pos_ws - pc.cam_pos);
-
-	out_texc = tex;
-	gl_Position = perspective(pc.cam_proj, pos_cs);
-}"
-	}
-}
-
-pub(crate) mod fs3d {
-	vulkano_shaders::shader! {
-		ty: "fragment",
-		src: "
-#version 450
-layout(location = 0) in vec2 texc;
-
-layout(location = 0) out vec4 f_color;
-
-layout(set = 0, binding = 0) uniform sampler2D tex;
-
-void main() {
-	f_color = texture(tex, texc);
-}
-"
 	}
 }
 

@@ -15,7 +15,7 @@ pub struct Mesh {
 impl Mesh {
 	pub fn new(ctx: Arc<Context>) -> Self {
 		let texture_desc = make_desc_set(
-			ctx.context_3d().layout_desc().clone(),
+			ctx.pipeline_ctx().layout_desc().clone(),
 			ctx.white_pixel().image().clone(),
 			ctx.sampler().clone(),
 		);
@@ -44,7 +44,7 @@ impl Mesh {
 
 	pub fn set_texture(&mut self, texture: &Texture) {
 		self.texture_desc = make_desc_set(
-			self.ctx.context_3d().layout_desc().clone(),
+			self.ctx.pipeline_ctx().layout_desc().clone(),
 			texture.image().clone(),
 			self.ctx.sampler().clone(),
 		);
