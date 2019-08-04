@@ -34,25 +34,25 @@ pub fn main() {
 				},
 				WindowEvent::KeyboardInput { device_id, input } => match input.virtual_keycode {
 					Some(key) => match key {
-					VirtualKeyCode::W => {
-						let mut t = cam.transform_mut();
-						t.pos += t.rot.rotate_vector(vec3(0.0, 1.0, 0.0));
+						VirtualKeyCode::W => {
+							let t = cam.transform_mut();
+							t.pos += t.rot.rotate_vector(vec3(0.0, 1.0, 0.0));
+						},
+						VirtualKeyCode::A => {
+							let t = cam.transform_mut();
+							t.pos += t.rot.rotate_vector(vec3(-1.0, 0.0, 0.0));
+						},
+						VirtualKeyCode::S => {
+							let t = cam.transform_mut();
+							t.pos += t.rot.rotate_vector(vec3(0.0, -1.0, 0.0));
+						},
+						VirtualKeyCode::D => {
+							let t = cam.transform_mut();
+							t.pos += t.rot.rotate_vector(vec3(1.0, 0.0, 0.0));
+						},
+						_ => (),
 					},
-					VirtualKeyCode::A => {
-						let mut t = cam.transform_mut();
-						t.pos += t.rot.rotate_vector(vec3(-1.0, 0.0, 0.0));
-					},
-					VirtualKeyCode::S => {
-						let mut t = cam.transform_mut();
-						t.pos += t.rot.rotate_vector(vec3(0.0, -1.0, 0.0));
-					},
-					VirtualKeyCode::D => {
-						let mut t = cam.transform_mut();
-						t.pos += t.rot.rotate_vector(vec3(1.0, 0.0, 0.0));
-					},
-					_ => (),
-				},
-				None => (),
+					None => (),
 				},
 				_ => (),
 			},

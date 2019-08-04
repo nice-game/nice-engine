@@ -33,6 +33,7 @@ pub struct Context {
 	pipeline_ctxs: Vec<Box<dyn PipelineContext>>,
 	active_pipeline: usize,
 	white_pixel: texture::Texture,
+	cfg_aniso: f32,
 }
 impl Context {
 	pub fn new(
@@ -68,8 +69,19 @@ impl Context {
 		};
 
 		let instance = Instance::new(Some(&app_info), &exts, None)?;
+		
+		let mut cfg_aniso = 16.0;
+		let mut feetchers = Features { sampler_anisotropy: true, ..Features::none() };
+		let ponydevice = PhysicalDevice::enumerate(&instance).filter(|pdevice| pdevice.supported_features().superset_of(&feetchers)).next();
+		let pdevice = match ponydevice {
+			Some(pony) => pony,
+			None => {
+				cfg_aniso = 1.0;
+				feetchers = Features::none();
+				PhysicalDevice::enumerate(&instance).next().expect("no device available")
+			}
+		};
 
-		let pdevice = PhysicalDevice::enumerate(&instance).next().expect("no device available");
 		info!("Using device: {} ({:?})", pdevice.name(), pdevice.ty());
 
 		let qfam =
@@ -77,7 +89,7 @@ impl Context {
 
 		let (device, mut queues) = Device::new(
 			pdevice,
-			&Features::none(),
+			&feetchers,
 			&DeviceExtensions { khr_swapchain: true, ..DeviceExtensions::none() },
 			[(qfam, 1.0)].iter().cloned(),
 		)
@@ -88,12 +100,12 @@ impl Context {
 			device.clone(),
 			Filter::Linear,
 			Filter::Linear,
-			MipmapMode::Nearest,
+			MipmapMode::Linear,
 			SamplerAddressMode::Repeat,
 			SamplerAddressMode::Repeat,
 			SamplerAddressMode::Repeat,
 			0.0,
-			1.0,
+			cfg_aniso,
 			0.0,
 			0.0,
 		)
@@ -113,7 +125,7 @@ impl Context {
 		.unwrap();
 
 		Ok((
-			Arc::new(Self { instance, device, queue, sampler, pipeline_ctxs, active_pipeline, white_pixel }),
+			Arc::new(Self { instance, device, queue, sampler, pipeline_ctxs, active_pipeline, white_pixel, cfg_aniso }),
 			white_pixel_future.join(deferred_def_future).join(forward_def_future),
 		))
 	}
