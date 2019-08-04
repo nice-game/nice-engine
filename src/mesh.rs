@@ -1,6 +1,5 @@
-use std::ops::Range;
 use crate::{mesh_data::MeshData, texture::Texture, transform::Transform, Context};
-use std::sync::Arc;
+use std::{ops::Range, sync::Arc};
 use vulkano::{
 	descriptor::{descriptor_set::PersistentDescriptorSet, DescriptorSet, PipelineLayoutAbstract},
 	image::ImageViewAccess,
@@ -11,16 +10,12 @@ pub struct Mesh {
 	ctx: Arc<Context>,
 	mesh_data: Option<Arc<MeshData>>,
 	transform: Transform,
-	texture_desc: Arc<dyn DescriptorSet + Send + Sync>,
+	texture_descs: Vec<(Material, Arc<dyn DescriptorSet + Send + Sync>)>,
 }
 impl Mesh {
 	pub fn new(ctx: Arc<Context>) -> Self {
-		let texture_desc = make_desc_set(
-			ctx.pipeline_ctx().layout_desc().clone(),
-			ctx.white_pixel().image().clone(),
-			ctx.sampler().clone(),
-		);
-		Self { ctx, mesh_data: None, transform: Transform::default(), texture_desc }
+		let texture_descs = vec![];
+		Self { ctx, mesh_data: None, transform: Transform::default(), texture_descs }
 	}
 
 	pub fn mesh_data(&self) -> &Option<Arc<MeshData>> {
@@ -29,6 +24,16 @@ impl Mesh {
 
 	pub fn set_mesh_data(&mut self, mesh_data: Option<Arc<MeshData>>) {
 		self.mesh_data = mesh_data;
+		if let Some(data) = self.mesh_data.as_ref() {
+			self.texture_descs = vec![(
+				Material::new(0..data.indices().len(), self.ctx.white_pixel().clone(), 0, 0, 0, [0; 3]),
+				make_desc_set(
+					self.ctx.pipeline_ctx().layout_desc().clone(),
+					self.ctx.white_pixel().image().clone(),
+					self.ctx.sampler().clone(),
+				),
+			)];
+		}
 	}
 
 	pub fn transform(&self) -> &Transform {
@@ -39,36 +44,40 @@ impl Mesh {
 		&mut self.transform
 	}
 
-	pub fn texture_desc(&self) -> &Arc<dyn DescriptorSet + Send + Sync> {
-		&self.texture_desc
+	pub fn texture_descs(&self) -> &Vec<(Material, Arc<dyn DescriptorSet + Send + Sync>)> {
+		&self.texture_descs
 	}
 
-	pub fn set_texture(&mut self, texture: &Texture) {
-		self.texture_desc = make_desc_set(
-			self.ctx.pipeline_ctx().layout_desc().clone(),
-			texture.image().clone(),
-			self.ctx.sampler().clone(),
-		);
+	pub fn set_materials(&mut self, materials: Vec<Material>) {
+		self.texture_descs = materials
+			.into_iter()
+			.map(|mat| {
+				let image = mat.tex1.image().clone();
+				(mat, make_desc_set(self.ctx.pipeline_ctx().layout_desc().clone(), image, self.ctx.sampler().clone()))
+			})
+			.collect();
 	}
 }
 
 pub struct Material {
-	range: Range<usize>,
-	tex1: Texture,
-	// tex2: Texture,
-	light_penetration: u8,
-	subsurface_scattering: u8,
-	emissive_brightness: u16,
-	base_color: [u8; 3],
+	pub(crate) range: Range<usize>,
+	pub(crate) tex1: Texture,
+	// pub(crate) tex2: Texture,
+	pub(crate) light_penetration: u8,
+	pub(crate) subsurface_scattering: u8,
+	pub(crate) emissive_brightness: u16,
+	pub(crate) base_color: [u8; 3],
 }
 impl Material {
-	pub(crate) fn new(range: Range<usize>,
-	tex1: Texture,
-	// tex2: Texture,
-	light_penetration: u8,
-	subsurface_scattering: u8,
-	emissive_brightness: u16,
-	base_color: [u8; 3]) -> Self {
+	pub(crate) fn new(
+		range: Range<usize>,
+		tex1: Texture,
+		// tex2: Texture,
+		light_penetration: u8,
+		subsurface_scattering: u8,
+		emissive_brightness: u16,
+		base_color: [u8; 3],
+	) -> Self {
 		Self { range, tex1, light_penetration, subsurface_scattering, emissive_brightness, base_color }
 	}
 }

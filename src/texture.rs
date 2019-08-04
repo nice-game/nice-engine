@@ -24,7 +24,12 @@ impl Texture {
 		I: ExactSizeIterator<Item = P>,
 		Format: AcceptsPixels<P>,
 	{
-		let (image, future) = ImmutableImage::from_iter(iter, Dimensions::Dim2d { width: dimensions[0], height: dimensions[1] }, format, ctx.queue().clone())?;
+		let (image, future) = ImmutableImage::from_iter(
+			iter,
+			Dimensions::Dim2d { width: dimensions[0], height: dimensions[1] },
+			format,
+			ctx.queue().clone(),
+		)?;
 		Ok((Self { image }, future))
 	}
 
@@ -40,7 +45,12 @@ impl Texture {
 		I: ExactSizeIterator<Item = P>,
 		Format: AcceptsPixels<P>,
 	{
-		let (image, future) = ImmutableImage::from_iter(iter, Dimensions::Dim2d { width: dimensions[0], height: dimensions[1] }, format, queue)?;
+		let (image, future) = ImmutableImage::from_iter(
+			iter,
+			Dimensions::Dim2d { width: dimensions[0], height: dimensions[1] },
+			format,
+			queue,
+		)?;
 		Ok((Self { image }, future))
 	}
 

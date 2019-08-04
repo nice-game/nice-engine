@@ -12,6 +12,7 @@ pub fn main() {
 
 	let mut mesh = Mesh::new(ctx.clone());
 	mesh.set_mesh_data(Some(map));
+	mesh.set_materials(mats);
 
 	let mut cam = Camera::new();
 	cam.transform_mut().pos = vec3(0.0, -2.0, 0.0);

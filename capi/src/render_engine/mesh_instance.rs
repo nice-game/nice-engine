@@ -22,7 +22,6 @@ pub extern fn MeshInstance_SetImageData(
 	_image: *mut GGD_ImageData,
 	_layer: GGMaterialLayer,
 ) {
-
 }
 
 #[allow(non_snake_case)]
@@ -32,7 +31,6 @@ pub extern fn MeshInstance_SetAnimation(
 	_lastIndex: u32,
 	_frameRate: f32,
 ) {
-
 }
 
 #[allow(non_snake_case)]
