@@ -33,7 +33,6 @@ pub struct Context {
 	pipeline_ctxs: Vec<Box<dyn PipelineContext>>,
 	active_pipeline: usize,
 	white_pixel: texture::Texture,
-	cfg_aniso: f32,
 }
 impl Context {
 	pub fn new(
@@ -69,20 +68,15 @@ impl Context {
 		};
 
 		let instance = Instance::new(Some(&app_info), &exts, None)?;
-		
-		let mut cfg_aniso = 16.0;
+
 		let mut feetchers = Features { sampler_anisotropy: true, ..Features::none() };
-		let ponydevice = PhysicalDevice::enumerate(&instance).filter(|pdevice| pdevice.supported_features().superset_of(&feetchers)).next();
-		let pdevice = match ponydevice {
-			Some(pony) => pony,
-			None => {
-				cfg_aniso = 1.0;
-				feetchers = Features::none();
-				PhysicalDevice::enumerate(&instance).next().expect("no device available")
-			}
+		let pdevice = PhysicalDevice::enumerate(&instance).max_by_key(|pd| pd.supported_features().superset_of(&feetchers)).unwrap();
+		let aniso = if pdevice.supported_features().superset_of(&feetchers) { 16.0 } else {
+			feetchers = Features::none();
+			1.0
 		};
 
-		info!("Using device: {} ({:?})", pdevice.name(), pdevice.ty());
+		println!("Using device: {} ({:?})", pdevice.name(), pdevice.ty());
 
 		let qfam =
 			pdevice.queue_families().find(|&q| q.supports_graphics()).expect("failed to find a graphical queue family");
@@ -105,7 +99,7 @@ impl Context {
 			SamplerAddressMode::Repeat,
 			SamplerAddressMode::Repeat,
 			0.0,
-			cfg_aniso,
+			aniso,
 			0.0,
 			0.0,
 		)
@@ -125,7 +119,7 @@ impl Context {
 		.unwrap();
 
 		Ok((
-			Arc::new(Self { instance, device, queue, sampler, pipeline_ctxs, active_pipeline, white_pixel, cfg_aniso }),
+			Arc::new(Self { instance, device, queue, sampler, pipeline_ctxs, active_pipeline, white_pixel }),
 			white_pixel_future.join(deferred_def_future).join(forward_def_future),
 		))
 	}

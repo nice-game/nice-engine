@@ -4,6 +4,7 @@ use vulkano::{
 	device::Queue,
 	format::{AcceptsPixels, Format, FormatDesc},
 	image::{Dimensions, ImageCreationError, ImageViewAccess, ImmutableImage},
+	buffer::{BufferAccess, TypedBufferAccess},
 	sync::GpuFuture,
 };
 
@@ -29,6 +30,27 @@ impl Texture {
 			Dimensions::Dim2d { width: dimensions[0], height: dimensions[1] },
 			format,
 			ctx.queue().clone(),
+		)?;
+		Ok((Self { image }, future))
+	}
+
+	pub(crate) fn from_buffer<F, B, P>(
+		ctx: &Context,
+		buffer: B,
+		dimensions: [u32; 2],
+		format: F,
+	) -> Result<(Self, impl GpuFuture), ImageCreationError>
+	where
+		F: FormatDesc + AcceptsPixels<P> + 'static + Send + Sync,
+		B: BufferAccess + TypedBufferAccess<Content = [P]> + 'static + Clone + Send + Sync,
+		P: Send + Sync + Clone + 'static,
+		Format: AcceptsPixels<P>,
+	{
+		let (image, future) = ImmutableImage::from_buffer(
+		    buffer,
+		    Dimensions::Dim2d { width: dimensions[0], height: dimensions[1] },
+		    format,
+		    ctx.queue().clone(),
 		)?;
 		Ok((Self { image }, future))
 	}

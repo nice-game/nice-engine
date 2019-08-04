@@ -126,20 +126,11 @@ pub fn from_nice_model(
 		index = nextindex;
 	}
 
-	let mut load_tex = |path_offset: u64, path_size: usize| {
-		file.seek(SeekFrom::Start(path_offset)).unwrap();
-		let mut buf = vec![0; path_size];
-		file.read_exact(&mut buf).unwrap();
-		let pathStr = String::from_utf8(buf).unwrap();
-		if pathStr.is_empty() {
-			println!("empty filename!");
-			return None;
-		}
-		println!("filename: {}", pathStr);
-		let path = path.as_ref().parent().unwrap().join(pathStr);
+	let mut import_tex = |path: PathBuf| {
 		let img = image::open(path).unwrap();
+		println!(" => loader: image importer");
 		let (width, height) = img.dimensions();
-		println!("resolution: {}x{}", width, height);
+		println!(" => resolution: {}x{}", width, height);
 		Some(Texture::from_iter(
 			ctx,
 			img.to_rgba().into_raw().into_iter(),
@@ -147,12 +138,85 @@ pub fn from_nice_model(
 			Format::R8G8B8A8Srgb,
 		).unwrap())
 	};
+
+	let mut native_tex = |path: PathBuf| {
+		let mut fp = File::open(path).unwrap();
+		let mut magic_number = [0; 4];
+		fp.read_exact(&mut magic_number).unwrap();
+		if &magic_number != b"ntex" {
+			return None;
+		}
+		println!(" => loader: native");
+		let width = fp.read_u16::<LE>().unwrap();
+		let height = fp.read_u16::<LE>().unwrap();
+		let pony = fp.read_u8().unwrap();
+		println!(" => resolution: {}x{}", width, height);
+			
+		let (bpp, fmt) = match pony {
+			0 => (32, Format::R8G8B8A8Srgb),
+			1 => (32, Format::R8G8B8A8Unorm),
+			2 => (24, Format::R8G8B8Srgb),
+			3 => (24, Format::R8G8B8Unorm),
+			4 => (32, Format::A2R10G10B10UnormPack32),
+			5 => (64, Format::R16G16B16A16Sfloat),
+			6 => (128, Format::R32G32B32A32Sfloat),
+			Any => { return None; }
+		};
+		let bytes = (width * height * bpp + 7) / 8;
+
+		let pixbuf: Arc<CpuAccessibleBuffer<[u8]>> = unsafe {
+			CpuAccessibleBuffer::uninitialized_array(
+				device.clone(),
+				bytes as usize,
+				BufferUsage::transfer_source()
+			).unwrap()
+		};
+		{
+			let mut pixels = pixbuf.write().unwrap();
+			fp.read_exact(&mut pixels).unwrap();
+		};
+		return Some(Texture::from_buffer(
+			ctx,
+			pixbuf,
+			[width as u32, height as u32],
+			fmt,
+		).unwrap());
+	};
+	
+	let mut load_tex = |path_offset: u64, path_size: usize| {
+		file.seek(SeekFrom::Start(path_offset)).unwrap();
+		let mut buf = vec![0; path_size];
+		file.read_exact(&mut buf).unwrap();
+		let path_str = String::from_utf8(buf).unwrap();
+		println!("load_tex({}):", path_str);
+		let path = path.as_ref().parent().unwrap().join(path_str);
+		match native_tex(path.clone()) {
+			Some((ntex, nfut)) => {
+				let nfutd: Box<dyn GpuFuture + Send + Sync> = Box::new(nfut);
+				return Some((ntex, nfutd));
+			},
+			None => {}
+		};
+		match import_tex(path) {
+			Some((ntex, nfut)) => {
+				let nfutd: Box<dyn GpuFuture + Send + Sync> = Box::new(nfut);
+				return Some((ntex, nfutd));
+			},
+			None => {}
+		};
+		println!(" => fail!");
+		None
+	};
+
 	let mut mats = vec![];
 	let mut mats_future: Box<dyn GpuFuture + Send + Sync> = Box::new(sync::now(device.clone()));
 	for mat_info in mat_infos {
 		let (tex1, tex1_future) = load_tex(mat_info.texture1_name_offset as u64, mat_info.texture1_name_size as usize).unwrap();
+		
+		//let (tex1, tex1_future) = import_tex(mat_info.texture1_name_offset as u64, mat_info.texture1_name_size as usize).unwrap();
 		mats_future = Box::new(mats_future.join(tex1_future));
 		
+		/*
 		let tex2_attempt = load_tex(mat_info.texture2_name_offset as u64, mat_info.texture2_name_size as usize);
 		let tex2 = match tex2_attempt {
 			None => ctx.white_pixel().clone(),
@@ -162,6 +226,8 @@ pub fn from_nice_model(
 				tex2_value
 			}
 		};
+		*/
+		let tex2 = ctx.white_pixel().clone();
 
 		mats.push(Material::new(
 			mat_info.range,
