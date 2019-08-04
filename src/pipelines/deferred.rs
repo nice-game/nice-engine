@@ -134,11 +134,16 @@ layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput g_
 void main() {
 	vec4 layer0 = subpassLoad(g_color);
 	vec4 layer1 = subpassLoad(g_normal);
+	vec4 layer2 = subpassLoad(g_depth);
+
 	vec3 color = layer0.rgb * layer0.rgb;
 	vec3 normal = layer1.xyz;
+	vec3 position = vec3(0.0, 0.0, layer2.x);
+	
 	vec3 light = vec3(0.02);
 	light += vec3(1.0, 0.9, 0.8) * max(0, dot(normal.xyz, -normalize(vec3(1,2,3))));
 	light += vec3(0.8, 0.9, 1.0) * max(0, dot(normal.xyz, normalize(vec3(1.75,1.25,3))));
+	//light += vec3(1.0) * max(0.0, dot(normal, normalize(lightPos - position)));
 	pixel = vec4(color * light, 0);
 }
 "
