@@ -157,12 +157,13 @@ pub fn from_nice_model(
 			1 => (32, Format::R8G8B8A8Unorm),
 			2 => (24, Format::R8G8B8Srgb),
 			3 => (24, Format::R8G8B8Unorm),
-			4 => (32, Format::A2R10G10B10UnormPack32),
-			5 => (64, Format::R16G16B16A16Sfloat),
-			6 => (128, Format::R32G32B32A32Sfloat),
+			4 => (64, Format::R16G16B16A16Sfloat),
+			5 => (128, Format::R32G32B32A32Sfloat),
+			6 => (32, Format::A2R10G10B10UnormPack32),
+			7 => (32, Format::A2R10G10B10UnormPack32),
 			Any => { return None; }
 		};
-		let bytes = (width * height * bpp + 7) / 8;
+		let bytes = ((width as u64) * (height as u64) * (bpp as u64) + 7) / 8;
 
 		let pixbuf: Arc<CpuAccessibleBuffer<[u8]>> = unsafe {
 			CpuAccessibleBuffer::uninitialized_array(
