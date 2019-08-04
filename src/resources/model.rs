@@ -2,30 +2,28 @@ use crate::{
 	mesh::Material,
 	mesh_data::{MeshData, Pntl_32F},
 	texture::Texture,
-	Context,
 };
 use byteorder::{ReadBytesExt, LE};
-use image::{png::PNGDecoder, GenericImageView, ImageDecoder};
-use log::debug;
+use image::GenericImageView;
 use std::{
 	fs::File,
-	io::{prelude::*, BufReader, SeekFrom},
+	io::{prelude::*, SeekFrom},
 	mem::drop,
 	ops::Range,
-	path::{Path, PathBuf},
+	path::Path,
 	sync::Arc,
 };
 use vulkano::{
 	buffer::{BufferUsage, CpuAccessibleBuffer, ImmutableBuffer},
+	device::Queue,
 	format::Format,
 	sync::{self, GpuFuture},
 };
 
-pub fn from_nice_model(
-	ctx: &Context,
+pub(crate) fn from_nice_model(
+	queue: &Arc<Queue>,
 	path: impl AsRef<Path> + Clone + Send + 'static,
-) -> (Arc<MeshData>, Vec<Material>, impl GpuFuture + Send + Sync + 'static) {
-	let queue = ctx.queue();
+) -> (Arc<MeshData>, Arc<Vec<Material>>, impl GpuFuture + Send + Sync + 'static) {
 	let device = queue.device();
 
 	let mut file = File::open(path.clone()).unwrap();
@@ -136,8 +134,8 @@ pub fn from_nice_model(
 		let img = image::open(path).unwrap();
 		let (width, height) = img.dimensions();
 		println!("resolution: {}x{}", width, height);
-		Texture::from_iter(
-			ctx,
+		Texture::from_iter_vk(
+			queue.clone(),
 			img.to_rgba().into_raw().into_iter(),
 			[width as u32, height as u32],
 			Format::R8G8B8A8Srgb,
@@ -164,7 +162,7 @@ pub fn from_nice_model(
 
 	(
 		MeshData::from_bufs(vertices, indices, queue.clone()),
-		mats,
+		Arc::new(mats),
 		vertices_future.join(indices_future).join(mats_future),
 	)
 }

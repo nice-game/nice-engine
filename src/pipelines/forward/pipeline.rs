@@ -77,14 +77,14 @@ impl Pipeline for ForwardPipeline {
 			.unwrap();
 		for mesh in meshes {
 			let mesh_data = mesh.mesh_data().as_ref().unwrap();
-			for (mat, desc) in mesh.texture_descs() {
+			for mat in mesh.texture_descs() {
 				command_buffer = command_buffer
 					.draw_indexed(
 						self.pipeline.clone(),
 						&Default::default(),
 						vec![mesh_data.vertices().clone()],
 						mesh_data.indices().clone().into_buffer_slice().slice(mat.range.clone()).unwrap(),
-						desc.clone(),
+						mat.tex1.clone(),
 						make_pc(mesh),
 					)
 					.unwrap();

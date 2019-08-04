@@ -1,23 +1,23 @@
 pub mod camera;
-pub mod codecs;
 pub mod mesh;
 pub mod mesh_data;
 pub mod pipelines;
+pub mod resources;
 pub mod surface;
 pub mod texture;
 pub mod transform;
 #[cfg(feature = "window")]
 pub mod window;
 
-use crate::pipelines::{deferred::DeferredPipelineDef, forward::ForwardPipelineDef, PipelineContext, PipelineDef};
+use crate::{
+	resources::Resources,
+	pipelines::{deferred::DeferredPipelineDef, forward::ForwardPipelineDef, PipelineContext, PipelineDef},
+};
 use log::info;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use vulkano::{
 	device::{Device, DeviceExtensions, Features, Queue},
-	format::Format,
-	image::Dimensions,
 	instance::{ApplicationInfo, Instance, InstanceExtensions, PhysicalDevice},
-	sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode},
 };
 pub use vulkano::{
 	instance::{InstanceCreationError, Version},
@@ -29,10 +29,9 @@ pub struct Context {
 	instance: Arc<Instance>,
 	device: Arc<Device>,
 	queue: Arc<Queue>,
-	sampler: Arc<Sampler>,
 	pipeline_ctxs: Vec<Box<dyn PipelineContext>>,
 	active_pipeline: usize,
-	white_pixel: texture::Texture,
+	resources: Mutex<Resources>,
 }
 impl Context {
 	pub fn new(
@@ -84,38 +83,22 @@ impl Context {
 		.expect("failed to create device");
 		let queue = queues.next().unwrap();
 
-		let sampler = Sampler::new(
-			device.clone(),
-			Filter::Linear,
-			Filter::Linear,
-			MipmapMode::Nearest,
-			SamplerAddressMode::Repeat,
-			SamplerAddressMode::Repeat,
-			SamplerAddressMode::Repeat,
-			0.0,
-			1.0,
-			0.0,
-			0.0,
-		)
-		.unwrap();
-
 		let (deferred_def, deferred_def_future) = DeferredPipelineDef::make_context(&device, &queue);
 		let (forward_def, forward_def_future) = ForwardPipelineDef::make_context(&device, &queue);
 		let pipeline_ctxs = vec![deferred_def, forward_def];
 		let active_pipeline = 0;
 
-		let (white_pixel, white_pixel_future) = texture::Texture::from_iter_vk(
-			queue.clone(),
-			vec![[255u8, 255, 255, 255]].into_iter(),
-			[1, 1],
-			Format::R8G8B8A8Unorm,
-		)
-		.unwrap();
+		let (resources, resources_future) = Resources::new(queue.clone(), pipeline_ctxs[0].layout_desc().clone());
+		let resources = Mutex::new(resources);
 
 		Ok((
-			Arc::new(Self { instance, device, queue, sampler, pipeline_ctxs, active_pipeline, white_pixel }),
-			white_pixel_future.join(deferred_def_future).join(forward_def_future),
+			Arc::new(Self { instance, device, queue, pipeline_ctxs, active_pipeline, resources }),
+			deferred_def_future.join(forward_def_future).join(resources_future),
 		))
+	}
+
+	pub fn resources(&self) -> &Mutex<Resources> {
+		&self.resources
 	}
 
 	fn device(&self) -> &Arc<Device> {
@@ -126,16 +109,8 @@ impl Context {
 		&self.queue
 	}
 
-	fn sampler(&self) -> &Arc<Sampler> {
-		&self.sampler
-	}
-
 	fn pipeline_ctx(&self) -> &dyn PipelineContext {
 		self.pipeline_ctxs[self.active_pipeline].as_ref()
-	}
-
-	fn white_pixel(&self) -> &texture::Texture {
-		&self.white_pixel
 	}
 }
 
