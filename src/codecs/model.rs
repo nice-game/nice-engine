@@ -109,9 +109,10 @@ pub fn from_nice_model(
 	let mut mat_infos = vec![];
 	for _ in 0..material_count {
 		let index_count = file.read_u32::<LE>().unwrap() as usize;
+		let nextindex = index + index_count;
 
 		mat_infos.push(MatInfo {
-			range: index..index_count,
+			range: index..nextindex,
 			texture1_name_size: file.read_u16::<LE>().unwrap(),
 			texture1_name_offset: file.read_u32::<LE>().unwrap(),
 			texture2_name_size: file.read_u16::<LE>().unwrap(),
@@ -122,19 +123,21 @@ pub fn from_nice_model(
 			base_color: [file.read_u8().unwrap(), file.read_u8().unwrap(), file.read_u8().unwrap()],
 		});
 
-		index += index_count;
+		index = nextindex;
 	}
 
 	let mut load_tex = |path_offset: u64, path_size: usize| {
 		file.seek(SeekFrom::Start(path_offset)).unwrap();
 		let mut buf = vec![0; path_size];
 		file.read_exact(&mut buf).unwrap();
-		let path = path.as_ref().parent().unwrap().join(String::from_utf8(buf).unwrap());
+		let pathStr = String::from_utf8(buf).unwrap();
+		println!("filename: {}", pathStr);
+		let path = path.as_ref().parent().unwrap().join(pathStr);
 		let decoder = PNGDecoder::new(BufReader::new(File::open(path).unwrap())).unwrap();
 		let (width, height) = decoder.dimensions();
 		let img = decoder.read_image().unwrap();
-		println!("{}, {}", width, height);
-		Texture::from_iter(ctx, img.into_iter(), [width as u32, height as u32], Format::R8G8B8A8Snorm)
+		println!("resolution: {}x{}", width, height);
+		Texture::from_iter(ctx, img.into_iter(), [width as u32, height as u32], Format::R8G8B8A8Srgb)
 	};
 	let mut mats = vec![];
 	let mut mats_future: Box<dyn GpuFuture + Send + Sync> = Box::new(sync::now(device.clone()));

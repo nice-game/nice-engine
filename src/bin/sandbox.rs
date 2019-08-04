@@ -1,25 +1,41 @@
-use cgmath::vec3;
+use cgmath::{prelude::*, vec3, Quaternion, Rad, Deg};
 use nice_engine::{camera::Camera, codecs::model::from_nice_model, mesh::Mesh, window::Window, Context};
 use vulkano::sync::GpuFuture;
-use winit::{dpi::LogicalSize, Event, EventsLoop, WindowEvent};
+use winit::{dpi::LogicalSize, Event, EventsLoop, WindowEvent, VirtualKeyCode};
 
 pub fn main() {
 	let (ctx, ctx_future) = Context::new(Some("nIce Engine"), None).unwrap();
 	let mut events = EventsLoop::new();
 	let mut win = Window::new(&ctx, &events).unwrap();
 
-	let (map, mats, map_future) = from_nice_model(&ctx, "assets/p250/p250.nmd");
+<<<<<<< ./src/bin/sandbox_LOCAL_2652.rs
+	let (map, mats, map_future) = from_nice_model(&ctx, "assets/de_rebelzone/de_rebelzone.nmd");
+||||||| ./src/bin/sandbox_BASE_2652.rs
+	let (map, map_future) = from_nice_model(&ctx, "assets/p250/p250.nmd");
+=======
+	let (map, map_future) = from_nice_model(&ctx, "assets/de_rebelzone/de_rebelzone.nmd");
+	
+>>>>>>> ./src/bin/sandbox_REMOTE_2652.rs
 
 	let mut mesh = Mesh::new(ctx.clone());
+	mesh.transform_mut().rot = Quaternion::from_angle_x(Deg(-90.0));
 	mesh.set_mesh_data(Some(map));
 	mesh.set_materials(mats);
 
 	let mut cam = Camera::new();
 	cam.transform_mut().pos = vec3(0.0, -2.0, 0.0);
+	//cam.transform_mut().rot = Quaternion::from_angle_z(Deg(45.0));
+	//cam.transform_mut().rot = Quaternion::from_angle_z(Deg(180.0));
 	cam.set_perspective(16.0 / 9.0, 90.0, 1.0, 50.0);
 
 	ctx_future.join(map_future).then_signal_fence_and_flush().unwrap().wait(None).unwrap();
+<<<<<<< ./src/bin/sandbox_LOCAL_2652.rs
 
+||||||| ./src/bin/sandbox_BASE_2652.rs
+
+=======
+	
+>>>>>>> ./src/bin/sandbox_REMOTE_2652.rs
 	loop {
 		let mut done = false;
 
@@ -28,6 +44,28 @@ pub fn main() {
 				WindowEvent::CloseRequested => done = true,
 				WindowEvent::Resized(LogicalSize { width, height }) => {
 					win.surface().resize(width as u32, height as u32)
+				},
+				WindowEvent::KeyboardInput { device_id, input } => match input.virtual_keycode {
+					Some(key) => match key {
+					VirtualKeyCode::W => {
+						let mut t = cam.transform_mut();
+						t.pos += t.rot.rotate_vector(vec3(0.0, 1.0, 0.0));
+					},
+					VirtualKeyCode::A => {
+						let mut t = cam.transform_mut();
+						t.pos += t.rot.rotate_vector(vec3(-1.0, 0.0, 0.0));
+					},
+					VirtualKeyCode::S => {
+						let mut t = cam.transform_mut();
+						t.pos += t.rot.rotate_vector(vec3(0.0, -1.0, 0.0));
+					},
+					VirtualKeyCode::D => {
+						let mut t = cam.transform_mut();
+						t.pos += t.rot.rotate_vector(vec3(1.0, 0.0, 0.0));
+					},
+					_ => (),
+				},
+				None => (),
 				},
 				_ => (),
 			},
