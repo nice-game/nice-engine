@@ -4,6 +4,7 @@ use super::{
 use crate::{camera::Camera, mesh::Mesh, mesh_data, pipelines::Pipeline};
 use std::sync::Arc;
 use vulkano::{
+	buffer::BufferAccess,
 	command_buffer::{AutoCommandBuffer, AutoCommandBufferBuilder},
 	framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass},
 	image::{AttachmentImage, ImageViewAccess},
@@ -76,16 +77,18 @@ impl Pipeline for ForwardPipeline {
 			.unwrap();
 		for mesh in meshes {
 			let mesh_data = mesh.mesh_data().as_ref().unwrap();
-			command_buffer = command_buffer
-				.draw_indexed(
-					self.pipeline.clone(),
-					&Default::default(),
-					vec![mesh_data.vertices().clone()],
-					mesh_data.indices().clone(),
-					mesh.texture_desc().clone(),
-					make_pc(mesh),
-				)
-				.unwrap();
+			for (mat, desc) in mesh.texture_descs() {
+				command_buffer = command_buffer
+					.draw_indexed(
+						self.pipeline.clone(),
+						&Default::default(),
+						vec![mesh_data.vertices().clone()],
+						mesh_data.indices().clone().into_buffer_slice().slice(mat.range.clone()).unwrap(),
+						desc.clone(),
+						make_pc(mesh),
+					)
+					.unwrap();
+			}
 		}
 
 		command_buffer.end_render_pass().unwrap().build().unwrap()

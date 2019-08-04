@@ -38,11 +38,7 @@ pub unsafe extern fn Window_Alloc(info: *mut GGD_WindowInfo) -> *mut GGD_Window 
 		_ => panic!("invalid platform"),
 	};
 
-	if let Ok(surface) = surface {
-		Box::into_raw(Box::new(surface))
-	} else {
-		null_mut()
-	}
+	if let Ok(surface) = surface { Box::into_raw(Box::new(surface)) } else { null_mut() }
 }
 
 #[allow(non_snake_case)]

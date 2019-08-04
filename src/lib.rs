@@ -107,7 +107,7 @@ impl Context {
 		let (white_pixel, white_pixel_future) = texture::Texture::from_iter_vk(
 			queue.clone(),
 			vec![[255u8, 255, 255, 255]].into_iter(),
-			Dimensions::Dim2d { width: 1, height: 1 },
+			[1, 1],
 			Format::R8G8B8A8Unorm,
 		)
 		.unwrap();

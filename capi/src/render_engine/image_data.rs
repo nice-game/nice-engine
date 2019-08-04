@@ -22,7 +22,6 @@ pub extern fn ImageData_SetPixelData(
 	_y: u32,
 	_format: GGPixelFormat,
 ) {
-
 }
 
 #[allow(non_snake_case)]
@@ -33,7 +32,6 @@ pub extern fn ImageData_GetPixelData(
 	_y: *mut u32,
 	_format: *mut GGPixelFormat,
 ) {
-
 }
 
 #[allow(non_snake_case)]
@@ -48,7 +46,6 @@ pub extern fn ImageData_DrawImage(
 	_w: f32,
 	_h: f32,
 ) {
-
 }
 
 #[allow(non_snake_case)]
@@ -59,5 +56,4 @@ pub extern fn ImageData_DrawText(
 	_y: f32,
 	_text: *const char,
 ) {
-
 }
