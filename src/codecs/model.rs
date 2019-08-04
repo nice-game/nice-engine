@@ -5,7 +5,7 @@ use crate::{
 	Context,
 };
 use byteorder::{ReadBytesExt, LE};
-use image::{png::PNGDecoder, ImageDecoder};
+use image::{GenericImageView, ImageDecoder};
 use log::debug;
 use std::{
 	fs::File,
@@ -131,31 +131,47 @@ pub fn from_nice_model(
 		let mut buf = vec![0; path_size];
 		file.read_exact(&mut buf).unwrap();
 		let pathStr = String::from_utf8(buf).unwrap();
+		if pathStr.is_empty() {
+			println!("empty filename!");
+			return None;
+		}
 		println!("filename: {}", pathStr);
 		let path = path.as_ref().parent().unwrap().join(pathStr);
-		let decoder = PNGDecoder::new(BufReader::new(File::open(path).unwrap())).unwrap();
-		let (width, height) = decoder.dimensions();
-		let img = decoder.read_image().unwrap();
+		let img = image::open(path).unwrap();
+		let (width, height) = img.dimensions();
 		println!("resolution: {}x{}", width, height);
-		Texture::from_iter(ctx, img.into_iter(), [width as u32, height as u32], Format::R8G8B8A8Srgb)
+		Some(Texture::from_iter(
+			ctx,
+			img.to_rgba().into_raw().into_iter(),
+			[width as u32, height as u32],
+			Format::R8G8B8A8Srgb,
+		).unwrap())
 	};
 	let mut mats = vec![];
 	let mut mats_future: Box<dyn GpuFuture + Send + Sync> = Box::new(sync::now(device.clone()));
 	for mat_info in mat_infos {
-		let (tex1, tex1_future) =
-			load_tex(mat_info.texture1_name_offset as u64, mat_info.texture1_name_size as usize).unwrap();
-		// let (tex2, tex2_future) =
-		// 	load_tex(mat_info.texture2_name_offset as u64, mat_info.texture2_name_size as usize).unwrap();
+		let (tex1, tex1_future) = load_tex(mat_info.texture1_name_offset as u64, mat_info.texture1_name_size as usize).unwrap();
+		mats_future = Box::new(mats_future.join(tex1_future));
+		
+		let tex2_attempt = load_tex(mat_info.texture2_name_offset as u64, mat_info.texture2_name_size as usize);
+		let tex2 = match tex2_attempt {
+			None => ctx.white_pixel().clone(),
+			Some(x) => {
+				let (tex2_value, tex2_future) = x;
+				mats_future = Box::new(mats_future.join(tex2_future));
+				tex2_value
+			}
+		};
+
 		mats.push(Material::new(
 			mat_info.range,
 			tex1,
-			// tex2,
+			tex2,
 			mat_info.light_penetration,
 			mat_info.subsurface_scattering,
 			mat_info.emissive_brightness,
 			mat_info.base_color,
 		));
-		mats_future = Box::new(mats_future.join(tex1_future));
 	}
 
 	(

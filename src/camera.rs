@@ -30,5 +30,5 @@ impl Camera {
 
 fn projection(aspect: f32, fovx: f32, znear: f32, zfar: f32) -> Vector4<f32> {
 	let f = 1.0 / (fovx * (PI / 360.0)).tan();
-	vec4(f / aspect, f, (zfar + znear) / (znear - zfar), 2.0 * zfar * znear / (znear - zfar))
+	vec4(f / aspect, f, (zfar + znear) / (znear - zfar), zfar * znear / (znear - zfar))
 }

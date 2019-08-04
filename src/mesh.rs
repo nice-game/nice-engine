@@ -26,7 +26,7 @@ impl Mesh {
 		self.mesh_data = mesh_data;
 		if let Some(data) = self.mesh_data.as_ref() {
 			self.texture_descs = vec![(
-				Material::new(0..data.indices().len(), self.ctx.white_pixel().clone(), 0, 0, 0, [0; 3]),
+				Material::new(0..data.indices().len(), self.ctx.white_pixel().clone(), self.ctx.white_pixel().clone(), 0, 0, 0, [0; 3]),
 				make_desc_set(
 					self.ctx.pipeline_ctx().layout_desc().clone(),
 					self.ctx.white_pixel().image().clone(),
@@ -62,7 +62,7 @@ impl Mesh {
 pub struct Material {
 	pub(crate) range: Range<usize>,
 	pub(crate) tex1: Texture,
-	// pub(crate) tex2: Texture,
+	pub(crate) tex2: Texture,
 	pub(crate) light_penetration: u8,
 	pub(crate) subsurface_scattering: u8,
 	pub(crate) emissive_brightness: u16,
@@ -72,13 +72,13 @@ impl Material {
 	pub(crate) fn new(
 		range: Range<usize>,
 		tex1: Texture,
-		// tex2: Texture,
+		tex2: Texture,
 		light_penetration: u8,
 		subsurface_scattering: u8,
 		emissive_brightness: u16,
 		base_color: [u8; 3],
 	) -> Self {
-		Self { range, tex1, light_penetration, subsurface_scattering, emissive_brightness, base_color }
+		Self { range, tex1, tex2, light_penetration, subsurface_scattering, emissive_brightness, base_color }
 	}
 }
 
