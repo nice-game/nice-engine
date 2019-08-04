@@ -1,3 +1,4 @@
+use std::ops::Range;
 use crate::{mesh_data::MeshData, texture::Texture, transform::Transform, Context};
 use std::sync::Arc;
 use vulkano::{
@@ -48,6 +49,27 @@ impl Mesh {
 			texture.image().clone(),
 			self.ctx.sampler().clone(),
 		);
+	}
+}
+
+pub struct Material {
+	range: Range<usize>,
+	tex1: Texture,
+	// tex2: Texture,
+	light_penetration: u8,
+	subsurface_scattering: u8,
+	emissive_brightness: u16,
+	base_color: [u8; 3],
+}
+impl Material {
+	pub(crate) fn new(range: Range<usize>,
+	tex1: Texture,
+	// tex2: Texture,
+	light_penetration: u8,
+	subsurface_scattering: u8,
+	emissive_brightness: u16,
+	base_color: [u8; 3]) -> Self {
+		Self { range, tex1, light_penetration, subsurface_scattering, emissive_brightness, base_color }
 	}
 }
 

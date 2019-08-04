@@ -1,25 +1,30 @@
 use crate::{
+	mesh::Material,
 	mesh_data::{MeshData, Pntl_32F},
+	texture::Texture,
 	Context,
 };
 use byteorder::{ReadBytesExt, LE};
+use image::{png::PNGDecoder, ImageDecoder};
 use log::debug;
 use std::{
 	fs::File,
-	io::{prelude::*, SeekFrom},
+	io::{prelude::*, BufReader, SeekFrom},
 	mem::drop,
-	path::Path,
+	ops::Range,
+	path::{Path, PathBuf},
 	sync::Arc,
 };
 use vulkano::{
 	buffer::{BufferUsage, CpuAccessibleBuffer, ImmutableBuffer},
-	sync::GpuFuture,
+	format::Format,
+	sync::{self, GpuFuture},
 };
 
 pub fn from_nice_model(
 	ctx: &Context,
 	path: impl AsRef<Path> + Clone + Send + 'static,
-) -> (Arc<MeshData>, impl GpuFuture + Send + Sync + 'static) {
+) -> (Arc<MeshData>, Vec<Material>, impl GpuFuture + Send + Sync + 'static) {
 	let queue = ctx.queue();
 	let device = queue.device();
 
@@ -99,5 +104,72 @@ pub fn from_nice_model(
 	let (indices, indices_future) =
 		ImmutableBuffer::from_buffer(tmpbuf, BufferUsage::index_buffer(), queue.clone()).unwrap();
 
-	(MeshData::from_bufs(vertices, indices, queue.clone()), vertices_future.join(indices_future))
+	file.seek(SeekFrom::Start(materials_offset)).unwrap();
+	let mut index = 0;
+	let mut mat_infos = vec![];
+	for _ in 0..material_count {
+		let index_count = file.read_u32::<LE>().unwrap() as usize;
+
+		mat_infos.push(MatInfo {
+			range: index..index_count,
+			texture1_name_size: file.read_u16::<LE>().unwrap(),
+			texture1_name_offset: file.read_u32::<LE>().unwrap(),
+			texture2_name_size: file.read_u16::<LE>().unwrap(),
+			texture2_name_offset: file.read_u32::<LE>().unwrap(),
+			light_penetration: file.read_u8().unwrap(),
+			subsurface_scattering: file.read_u8().unwrap(),
+			emissive_brightness: file.read_u16::<LE>().unwrap(),
+			base_color: [file.read_u8().unwrap(), file.read_u8().unwrap(), file.read_u8().unwrap()],
+		});
+
+		index += index_count;
+	}
+
+	let mut load_tex = |path_offset: u64, path_size: usize| {
+		file.seek(SeekFrom::Start(path_offset)).unwrap();
+		let mut buf = vec![0; path_size];
+		file.read_exact(&mut buf).unwrap();
+		let path = path.as_ref().parent().unwrap().join(String::from_utf8(buf).unwrap());
+		let decoder = PNGDecoder::new(BufReader::new(File::open(path).unwrap())).unwrap();
+		let (width, height) = decoder.dimensions();
+		let img = decoder.read_image().unwrap();
+		println!("{}, {}", width, height);
+		Texture::from_iter(ctx, img.into_iter(), [width as u32, height as u32], Format::R8G8B8A8Snorm)
+	};
+	let mut mats = vec![];
+	let mut mats_future: Box<dyn GpuFuture + Send + Sync> = Box::new(sync::now(device.clone()));
+	for mat_info in mat_infos {
+		let (tex1, tex1_future) =
+			load_tex(mat_info.texture1_name_offset as u64, mat_info.texture1_name_size as usize).unwrap();
+		// let (tex2, tex2_future) =
+		// 	load_tex(mat_info.texture2_name_offset as u64, mat_info.texture2_name_size as usize).unwrap();
+		mats.push(Material::new(
+			mat_info.range,
+			tex1,
+			// tex2,
+			mat_info.light_penetration,
+			mat_info.subsurface_scattering,
+			mat_info.emissive_brightness,
+			mat_info.base_color,
+		));
+		mats_future = Box::new(mats_future.join(tex1_future));
+	}
+
+	(
+		MeshData::from_bufs(vertices, indices, queue.clone()),
+		mats,
+		vertices_future.join(indices_future).join(mats_future),
+	)
+}
+
+struct MatInfo {
+	range: Range<usize>,
+	texture1_name_size: u16,
+	texture1_name_offset: u32,
+	texture2_name_size: u16,
+	texture2_name_offset: u32,
+	light_penetration: u8,
+	subsurface_scattering: u8,
+	emissive_brightness: u16,
+	base_color: [u8; 3],
 }

@@ -7,6 +7,7 @@ use vulkano::{
 	sync::GpuFuture,
 };
 
+#[derive(Clone)]
 pub struct Texture {
 	image: Arc<dyn ImageViewAccess + Send + Sync>,
 }
@@ -14,7 +15,7 @@ impl Texture {
 	pub fn from_iter<F, P, I>(
 		ctx: &Context,
 		iter: I,
-		dimensions: Dimensions,
+		dimensions: [u32; 2],
 		format: F,
 	) -> Result<(Self, impl GpuFuture), ImageCreationError>
 	where
@@ -23,14 +24,14 @@ impl Texture {
 		I: ExactSizeIterator<Item = P>,
 		Format: AcceptsPixels<P>,
 	{
-		let (image, future) = ImmutableImage::from_iter(iter, dimensions, format, ctx.queue().clone())?;
+		let (image, future) = ImmutableImage::from_iter(iter, Dimensions::Dim2d { width: dimensions[0], height: dimensions[1] }, format, ctx.queue().clone())?;
 		Ok((Self { image }, future))
 	}
 
 	pub(crate) fn from_iter_vk<F, P, I>(
 		queue: Arc<Queue>,
 		iter: I,
-		dimensions: Dimensions,
+		dimensions: [u32; 2],
 		format: F,
 	) -> Result<(Self, impl GpuFuture), ImageCreationError>
 	where
@@ -39,7 +40,7 @@ impl Texture {
 		I: ExactSizeIterator<Item = P>,
 		Format: AcceptsPixels<P>,
 	{
-		let (image, future) = ImmutableImage::from_iter(iter, dimensions, format, queue)?;
+		let (image, future) = ImmutableImage::from_iter(iter, Dimensions::Dim2d { width: dimensions[0], height: dimensions[1] }, format, queue)?;
 		Ok((Self { image }, future))
 	}
 

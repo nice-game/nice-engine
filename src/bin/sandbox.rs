@@ -8,7 +8,7 @@ pub fn main() {
 	let mut events = EventsLoop::new();
 	let mut win = Window::new(&ctx, &events).unwrap();
 
-	let (map, map_future) = from_nice_model(&ctx, "assets/p250/p250.nmd");
+	let (map, mats, map_future) = from_nice_model(&ctx, "assets/p250/p250.nmd");
 
 	let mut mesh = Mesh::new(ctx.clone());
 	mesh.set_mesh_data(Some(map));
