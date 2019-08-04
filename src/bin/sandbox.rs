@@ -1,7 +1,7 @@
-use cgmath::{prelude::*, vec3, Deg, Quaternion};
+use cgmath::{prelude::*, vec3, Deg, Quaternion, Rad};
 use nice_engine::{camera::Camera, codecs::model::from_nice_model, mesh::Mesh, window::Window, Context};
 use vulkano::sync::GpuFuture;
-use winit::{dpi::LogicalSize, Event, EventsLoop, WindowEvent};
+use winit::{dpi::LogicalSize, Event, EventsLoop, VirtualKeyCode, WindowEvent};
 
 pub fn main() {
 	let (ctx, ctx_future) = Context::new(Some("nIce Engine"), None).unwrap();
@@ -29,6 +29,28 @@ pub fn main() {
 				WindowEvent::CloseRequested => done = true,
 				WindowEvent::Resized(LogicalSize { width, height }) => {
 					win.surface().resize(width as u32, height as u32)
+				},
+				WindowEvent::KeyboardInput { device_id, input } => match input.virtual_keycode {
+					Some(key) => match key {
+						VirtualKeyCode::W => {
+							let mut t = cam.transform_mut();
+							t.pos += t.rot.rotate_vector(vec3(0.0, 1.0, 0.0));
+						},
+						VirtualKeyCode::A => {
+							let mut t = cam.transform_mut();
+							t.pos += t.rot.rotate_vector(vec3(-1.0, 0.0, 0.0));
+						},
+						VirtualKeyCode::S => {
+							let mut t = cam.transform_mut();
+							t.pos += t.rot.rotate_vector(vec3(0.0, -1.0, 0.0));
+						},
+						VirtualKeyCode::D => {
+							let mut t = cam.transform_mut();
+							t.pos += t.rot.rotate_vector(vec3(1.0, 0.0, 0.0));
+						},
+						_ => (),
+					},
+					None => (),
 				},
 				_ => (),
 			},

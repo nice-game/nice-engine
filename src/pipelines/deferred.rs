@@ -88,13 +88,13 @@ mod geom_fshader {
 layout(location = 0) in vec3 nor;
 layout(location = 1) in vec2 texc;
 
-layout(location = 0) out vec4 diffuse;
+layout(location = 0) out vec4 color;
 layout(location = 1) out vec4 normal;
 
 layout(set = 0, binding = 0) uniform sampler2D tex;
 
 void main() {
-	diffuse = texture(tex, texc);
+	color = vec4(sqrt(texture(tex, texc).rgb), 0);
 	normal = vec4(nor, 0);
 }
 "
@@ -125,14 +125,26 @@ mod swap_fshader {
 #version 450
 layout(location = 0) in vec2 texc;
 
-layout(location = 0) out vec4 color;
+layout(location = 0) out vec4 pixel;
 
-layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput diffuse;
-layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput normal;
-layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput depth;
+layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput g_color;
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput g_normal;
+layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput g_depth;
 
 void main() {
-	color = subpassLoad(diffuse);
+	vec4 layer0 = subpassLoad(g_color);
+	vec4 layer1 = subpassLoad(g_normal);
+	vec4 layer2 = subpassLoad(g_depth);
+
+	vec3 color = layer0.rgb * layer0.rgb;
+	vec3 normal = layer1.xyz;
+	vec3 position = vec3(0.0, 0.0, layer2.x);
+	
+	vec3 light = vec3(0.02);
+	light += vec3(1.0, 0.9, 0.8) * max(0, dot(normal.xyz, -normalize(vec3(1,2,3))));
+	light += vec3(0.8, 0.9, 1.0) * max(0, dot(normal.xyz, normalize(vec3(1.75,1.25,3))));
+	//light += vec3(1.0) * max(0.0, dot(normal, normalize(lightPos - position)));
+	pixel = vec4(color * light, 0);
 }
 "
 	}
