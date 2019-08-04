@@ -8,8 +8,13 @@ pub fn main() {
 	let mut events = EventsLoop::new();
 	let mut win = Window::new(&ctx, &events).unwrap();
 
+<<<<<<< Updated upstream
 	let (map, mats, map_future) = from_nice_model(&ctx, "assets/de_rebelzone/de_rebelzone.nmd");
+=======
+	let (map, map_future) = from_nice_model(&ctx, "assets/de_rebelzone/de_rebelzone.nmd");
 	
+>>>>>>> Stashed changes
+
 	let mut mesh = Mesh::new(ctx.clone());
 	mesh.transform_mut().rot = Quaternion::from_angle_x(Deg(-90.0));
 	mesh.set_mesh_data(Some(map));
@@ -22,7 +27,7 @@ pub fn main() {
 	cam.set_perspective(16.0 / 9.0, 90.0, 1.0, 50.0);
 
 	ctx_future.join(map_future).then_signal_fence_and_flush().unwrap().wait(None).unwrap();
-
+	
 	loop {
 		let mut done = false;
 
