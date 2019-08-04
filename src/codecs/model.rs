@@ -109,9 +109,10 @@ pub fn from_nice_model(
 	let mut mat_infos = vec![];
 	for _ in 0..material_count {
 		let index_count = file.read_u32::<LE>().unwrap() as usize;
+		let nextindex = index + index_count;
 
 		mat_infos.push(MatInfo {
-			range: index..index_count,
+			range: index..nextindex,
 			texture1_name_size: file.read_u16::<LE>().unwrap(),
 			texture1_name_offset: file.read_u32::<LE>().unwrap(),
 			texture2_name_size: file.read_u16::<LE>().unwrap(),
@@ -122,17 +123,19 @@ pub fn from_nice_model(
 			base_color: [file.read_u8().unwrap(), file.read_u8().unwrap(), file.read_u8().unwrap()],
 		});
 
-		index += index_count;
+		index = nextindex;
 	}
 
 	let mut load_tex = |path_offset: u64, path_size: usize| {
 		file.seek(SeekFrom::Start(path_offset)).unwrap();
 		let mut buf = vec![0; path_size];
 		file.read_exact(&mut buf).unwrap();
-		let path = path.as_ref().parent().unwrap().join(String::from_utf8(buf).unwrap());
+		let path_str = String::from_utf8(buf).unwrap();
+		println!("filename: {}", path_str);
+		let path = path.as_ref().parent().unwrap().join(path_str);
 		let img = image::open(path).unwrap();
 		let (width, height) = img.dimensions();
-		println!("{}, {}", width, height);
+		println!("resolution: {}x{}", width, height);
 		Texture::from_iter(
 			ctx,
 			img.to_rgba().into_raw().into_iter(),
@@ -156,7 +159,7 @@ pub fn from_nice_model(
 			mat_info.emissive_brightness,
 			mat_info.base_color,
 		));
-		mats_future = Box::new(mats_future.join(tex1_future));
+		mats_future = Box::new(mats_future.join(tex1_future).join(tex2_future));
 	}
 
 	(
