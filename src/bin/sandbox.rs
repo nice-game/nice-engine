@@ -8,10 +8,9 @@ pub fn main() {
 	let mut events = EventsLoop::new();
 	let mut win = Window::new(&ctx, &events).unwrap();
 
-	let (map, mats, map_future) = from_nice_model(&ctx, "assets/de_rebelzone/de_rebelzone.nmd");
+	let (map, mats, map_future) = from_nice_model(&ctx, "assets/p250/p250.nmd");
 
 	let mut mesh = Mesh::new(ctx.clone());
-	mesh.transform_mut().rot = Quaternion::from_angle_x(Deg(-90.0));
 	mesh.set_mesh_data(Some(map));
 	mesh.set_materials(mats);
 
