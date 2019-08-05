@@ -124,7 +124,7 @@ pub(crate) fn from_nice_model(
 		index = nextindex;
 	}
 
-	let mut import_tex = |path: &Path| -> (Texture, Box<dyn GpuFuture + Send + Sync>) {
+	let import_tex = |path: &Path| -> (Texture, Box<dyn GpuFuture + Send + Sync>) {
 		let img = image::open(path).unwrap();
 		println!(" => loader: image importer");
 		let (width, height) = img.dimensions();
@@ -134,11 +134,12 @@ pub(crate) fn from_nice_model(
 			img.to_rgba().into_raw().into_iter(),
 			[width as u32, height as u32],
 			Format::R8G8B8A8Srgb,
-		).unwrap();
+		)
+		.unwrap();
 		(tex, Box::new(tex_future))
 	};
 
-	let mut native_tex = |path: &Path| -> Option<(Texture, Box<dyn GpuFuture + Send + Sync>)> {
+	let native_tex = |path: &Path| -> Option<(Texture, Box<dyn GpuFuture + Send + Sync>)> {
 		let mut fp = File::open(path).unwrap();
 		let mut magic_number = [0; 4];
 		fp.read_exact(&mut magic_number).unwrap();
@@ -160,28 +161,23 @@ pub(crate) fn from_nice_model(
 			5 => (128, Format::R32G32B32A32Sfloat),
 			6 => (32, Format::A2R10G10B10UnormPack32),
 			7 => (32, Format::A2R10G10B10UnormPack32),
-			Any => { return None; }
+			_ => {
+				return None;
+			},
 		};
 		let bytes = ((width as u64) * (height as u64) * (bpp as u64) + 7) / 8;
 
 		let pixbuf: Arc<CpuAccessibleBuffer<[u8]>> = unsafe {
-			CpuAccessibleBuffer::uninitialized_array(
-				device.clone(),
-				bytes as usize,
-				BufferUsage::transfer_source()
-			).unwrap()
+			CpuAccessibleBuffer::uninitialized_array(device.clone(), bytes as usize, BufferUsage::transfer_source())
+				.unwrap()
 		};
 		{
 			let mut pixels = pixbuf.write().unwrap();
 			fp.read_exact(&mut pixels).unwrap();
 		};
-		let (tex, tex_future) = Texture::from_buffer(
-			queue.clone(),
-			pixbuf,
-			[width as u32, height as u32],
-			fmt,
-		).unwrap();
-		return Some((tex, Box::new(tex_future)));
+		let (tex, tex_future) =
+			Texture::from_buffer(queue.clone(), pixbuf, [width as u32, height as u32], fmt).unwrap();
+		Some((tex, Box::new(tex_future)))
 	};
 
 	let mut load_tex = |path_offset: u64, path_size: usize| {
@@ -197,10 +193,8 @@ pub(crate) fn from_nice_model(
 	let mut mats = vec![];
 	let mut mats_future: Box<dyn GpuFuture + Send + Sync> = Box::new(sync::now(device.clone()));
 	for mat_info in mat_infos {
-		let (tex1, tex1_future) =
-			load_tex(mat_info.texture1_name_offset as u64, mat_info.texture1_name_size as usize);
-		let (tex2, tex2_future) =
-			load_tex(mat_info.texture2_name_offset as u64, mat_info.texture2_name_size as usize);
+		let (tex1, tex1_future) = load_tex(mat_info.texture1_name_offset as u64, mat_info.texture1_name_size as usize);
+		let (tex2, tex2_future) = load_tex(mat_info.texture2_name_offset as u64, mat_info.texture2_name_size as usize);
 		mats.push(Material::new(
 			mat_info.range,
 			tex1,

@@ -10,8 +10,8 @@ pub mod transform;
 pub mod window;
 
 use crate::{
-	resources::Resources,
 	pipelines::{deferred::DeferredPipelineDef, forward::ForwardPipelineDef, PipelineContext, PipelineDef},
+	resources::Resources,
 };
 use log::info;
 use std::sync::{Arc, Mutex};
@@ -68,15 +68,18 @@ impl Context {
 
 		let instance = Instance::new(Some(&app_info), &exts, None)?;
 
-		let pdevice = PhysicalDevice::enumerate(&instance).next().expect("no device available");
+		let features = Features { sampler_anisotropy: true, ..Features::none() };
+		let pdevice = PhysicalDevice::enumerate(&instance)
+			.max_by_key(|pd| pd.supported_features().superset_of(&features))
+			.unwrap();
 		info!("Using device: {} ({:?})", pdevice.name(), pdevice.ty());
 
+		let features = pdevice.supported_features().intersection(&features);
 		let qfam =
 			pdevice.queue_families().find(|&q| q.supports_graphics()).expect("failed to find a graphical queue family");
-
 		let (device, mut queues) = Device::new(
 			pdevice,
-			&Features::none(),
+			&features,
 			&DeviceExtensions { khr_swapchain: true, ..DeviceExtensions::none() },
 			[(qfam, 1.0)].iter().cloned(),
 		)

@@ -30,16 +30,18 @@ impl Resources {
 		queue: Arc<Queue>,
 		layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
 	) -> (Self, impl GpuFuture) {
+		let device = queue.device();
+
 		let sampler = Sampler::new(
-			queue.device().clone(),
+			device.clone(),
 			Filter::Linear,
 			Filter::Linear,
-			MipmapMode::Nearest,
+			MipmapMode::Linear,
 			SamplerAddressMode::Repeat,
 			SamplerAddressMode::Repeat,
 			SamplerAddressMode::Repeat,
 			0.0,
-			1.0,
+			if device.enabled_features().sampler_anisotropy { 16.0 } else { 1.0 },
 			0.0,
 			0.0,
 		)
