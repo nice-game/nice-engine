@@ -45,15 +45,15 @@ pub(crate) fn from_nice_model(
 	let material_count = file.read_u8().unwrap() as usize;
 	let materials_offset = file.read_u32::<LE>().unwrap() as u64;
 
-	println!("vertex_count: {}", vertex_count);
-	println!("positions_offset: {}", positions_offset);
-	println!("normals_offset: {}", normals_offset);
-	println!("texcoords_main_offset: {}", texcoords_main_offset);
-	println!("texcoords_lightmap_offset: {}", texcoords_lightmap_offset);
-	println!("index_count: {}", index_count);
-	println!("indices_offset: {}", indices_offset);
-	println!("material_count: {}", material_count);
-	println!("materials_offset: {}", materials_offset);
+	//println!("vertex_count: {}", vertex_count);
+	//println!("positions_offset: {}", positions_offset);
+	//println!("normals_offset: {}", normals_offset);
+	//println!("texcoords_main_offset: {}", texcoords_main_offset);
+	//println!("texcoords_lightmap_offset: {}", texcoords_lightmap_offset);
+	//println!("index_count: {}", index_count);
+	//println!("indices_offset: {}", indices_offset);
+	//println!("material_count: {}", material_count);
+	//println!("materials_offset: {}", materials_offset);
 
 	let tmpbuf: Arc<CpuAccessibleBuffer<[Pntl_32F]>> = unsafe {
 		CpuAccessibleBuffer::uninitialized_array(device.clone(), vertex_count, BufferUsage::transfer_source()).unwrap()
@@ -126,9 +126,9 @@ pub(crate) fn from_nice_model(
 
 	let import_tex = |path: &Path| -> (Texture, Box<dyn GpuFuture + Send + Sync>) {
 		let img = image::open(path).unwrap();
-		println!(" => loader: image importer");
+		//println!(" => loader: image importer");
 		let (width, height) = img.dimensions();
-		println!(" => resolution: {}x{}", width, height);
+		//println!(" => resolution: {}x{}", width, height);
 		let (tex, tex_future) = Texture::from_iter_vk(
 			queue.clone(),
 			img.to_rgba().into_raw().into_iter(),
@@ -141,29 +141,25 @@ pub(crate) fn from_nice_model(
 
 	let native_tex = |path: &Path| -> Option<(Texture, Box<dyn GpuFuture + Send + Sync>)> {
 		let mut fp = File::open(path).unwrap();
-		let mut magic_number = [0; 4];
+		let mut magic_number = [0; 3];
 		fp.read_exact(&mut magic_number).unwrap();
-		if &magic_number != b"ntex" {
+		if &magic_number != b"ntx" {
 			return None;
 		}
-		println!(" => loader: native");
+		//println!(" => loader: native");
+		let format = fp.read_u8().unwrap();
 		let width = fp.read_u16::<LE>().unwrap();
 		let height = fp.read_u16::<LE>().unwrap();
-		let format = fp.read_u8().unwrap();
-		println!(" => resolution: {}x{}", width, height);
+		//println!(" => resolution: {}x{}", width, height);
 
 		let (bpp, fmt) = match format {
 			0 => (32, Format::R8G8B8A8Srgb),
 			1 => (32, Format::R8G8B8A8Unorm),
-			2 => (24, Format::R8G8B8Srgb),
-			3 => (24, Format::R8G8B8Unorm),
+			2 => (32, Format::A2B10G10R10UnormPack32),
+			3 => (32, Format::A2B10G10R10UnormPack32),
 			4 => (64, Format::R16G16B16A16Sfloat),
 			5 => (128, Format::R32G32B32A32Sfloat),
-			6 => (32, Format::A2R10G10B10UnormPack32),
-			7 => (32, Format::A2R10G10B10UnormPack32),
-			_ => {
-				return None;
-			},
+			_ => { return None; },
 		};
 		let bytes = ((width as u64) * (height as u64) * (bpp as u64) + 7) / 8;
 
@@ -184,8 +180,9 @@ pub(crate) fn from_nice_model(
 		file.seek(SeekFrom::Start(path_offset)).unwrap();
 		let mut buf = vec![0; path_size];
 		file.read_exact(&mut buf).unwrap();
-		let path_str = String::from_utf8(buf).unwrap();
-		println!("load_tex({}):", path_str);
+		let mut path_str = String::from_utf8(buf).unwrap();
+		//println!("load_tex({}):", path_str);
+		if path_str.is_empty() { path_str = "default.ntx".to_string(); };
 		let path = path.as_ref().parent().unwrap().join(path_str);
 		native_tex(&path).unwrap_or_else(|| import_tex(&path))
 	};

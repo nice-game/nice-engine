@@ -8,12 +8,13 @@ pub fn main() {
 	let mut events = EventsLoop::new();
 	let mut win = Window::new(&ctx, &events).unwrap();
 
-	let gun = ctx.resources().lock().unwrap().get_model("assets/p250/p250.nmd");
+	let mut map = ctx.resources().lock().unwrap().get_model("assets/de_rebelzone/de_rebelzone.nmd");
+	map.transform_mut().rot = Quaternion::from_angle_x(Deg(90.0));// * Quaternion::from_angle_y(Deg(45.0));
 
 	let mut cam = Camera::new();
-	cam.transform_mut().pos = vec3(-1.1, 0.0, 0.0);
-	cam.transform_mut().rot = Quaternion::from_angle_z(Deg(-90.0)) * Quaternion::from_angle_y(Deg(90.0));
-	cam.set_perspective(16.0 / 9.0, 90.0, 1.0, 50.0);
+	cam.transform_mut().pos = vec3(17.0, 36.5, -12.0);
+	cam.transform_mut().rot = Quaternion::from_angle_z(Deg(180.0));
+	cam.set_perspective(16.0 / 9.0, 90.0, 1.0, 1000.0);
 
 	ctx_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 
@@ -44,6 +45,26 @@ pub fn main() {
 							let t = cam.transform_mut();
 							t.pos += t.rot.rotate_vector(vec3(1.0, 0.0, 0.0));
 						},
+						VirtualKeyCode::Up => {
+							let t = cam.transform_mut();
+							t.pos += t.rot.rotate_vector(vec3(0.0, 0.0, 1.0));
+						},
+						VirtualKeyCode::Down => {
+							let t = cam.transform_mut();
+							t.pos += t.rot.rotate_vector(vec3(0.0, 0.0, -1.0));
+						},
+						VirtualKeyCode::Left => {
+							let t = cam.transform_mut();
+							t.rot = t.rot * Quaternion::from_angle_z(Deg(11.25));
+						},
+						VirtualKeyCode::Right => {
+							let t = cam.transform_mut();
+							t.rot = t.rot * Quaternion::from_angle_z(Deg(-11.25));
+						},
+						VirtualKeyCode::P => {
+							let t = cam.transform_mut();
+							println!("cam pos={:?} rot={:?}", t.pos, t.rot);
+						},
 						_ => (),
 					},
 					None => (),
@@ -57,6 +78,6 @@ pub fn main() {
 			break;
 		}
 
-		win.surface().draw(&cam, &[&gun]);
+		win.surface().draw(&cam, &[&map]);
 	}
 }
