@@ -1,6 +1,6 @@
 use super::{
 	context::DeferredPipelineContextInner, geom_fshader, geom_vshader, swap_fshader, swap_vshader, Vert2D,
-	DEPTH_FORMAT, DIFFUSE_FORMAT, NORMAL_FORMAT,
+	DEPTH_FORMAT, DIFFUSE_FORMAT, NORMAL_FORMAT, POSITION_FORMAT,
 };
 use crate::{camera::Camera, mesh::Mesh, mesh_data, pipelines::Pipeline};
 use std::sync::Arc;
@@ -21,6 +21,7 @@ pub(super) struct DeferredPipeline {
 	swap_pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
 	framebuffers: Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
 	gbuffers_desc: Arc<dyn DescriptorSet + Send + Sync>,
+	dimensions: [u32; 2],
 }
 impl DeferredPipeline {
 	pub(super) fn new(
@@ -37,12 +38,12 @@ impl DeferredPipeline {
 		let framebuffers = create_framebuffers(&ctx.render_pass, &gbuffers, images);
 		let gbuffers_desc = make_gbuffers_desc_set(ctx.swap_layout_desc.clone(), &gbuffers);
 
-		Self { ctx, geom_pipeline, swap_pipeline, framebuffers, gbuffers_desc }
+		Self { ctx, geom_pipeline, swap_pipeline, framebuffers, gbuffers_desc, dimensions }
 	}
 }
 impl Pipeline for DeferredPipeline {
 	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[&Mesh]) -> AutoCommandBuffer {
-		let clear_values = vec![[0.0, 0.0, 0.0, 1.0].into(), [0.0; 4].into(), 1.0.into(), [0.0; 4].into()];
+		let clear_values = vec![1.0.into(), [0.0, 0.0, 0.0, 1.0].into(), [0.0; 4].into(), [0.0; 4].into(), [0.0; 4].into()];
 
 		let make_pc = |mesh: &Mesh| geom_vshader::ty::PushConsts {
 			cam_proj: cam.projection().into(),
@@ -84,7 +85,12 @@ impl Pipeline for DeferredPipeline {
 				vec![self.ctx.vertices.clone()],
 				self.ctx.indices.clone(),
 				self.gbuffers_desc.clone(),
-				(),
+				swap_fshader::ty::PushConsts {
+					Resolution: [self.dimensions[0] as f32, self.dimensions[1] as f32, 1.0/(self.dimensions[0] as f32), 1.0/(self.dimensions[1] as f32)],
+					Projection: cam.projection().into(),
+					CameraRotation: cam.transform().rot.into(),
+					CameraOffset: cam.transform().pos.into(),
+				},
 			)
 			.unwrap()
 			.end_render_pass()
@@ -123,36 +129,35 @@ fn create_framebuffers(
 		.map(|image| {
 			Arc::new(
 				Framebuffer::start(swap_pass.clone())
-					.add(gbuffers.diffuse.clone())
-					.unwrap()
-					.add(gbuffers.normal.clone())
-					.unwrap()
-					.add(gbuffers.depth.clone())
-					.unwrap()
-					.add(image)
-					.unwrap()
-					.build()
-					.unwrap(),
+					.add(gbuffers.depth.clone()).unwrap()
+					.add(gbuffers.diffuse.clone()).unwrap()
+					.add(gbuffers.normal.clone()).unwrap()
+					.add(gbuffers.position.clone()).unwrap()
+					.add(image).unwrap()
+					.build().unwrap(),
 			) as Arc<dyn FramebufferAbstract + Send + Sync>
 		})
 		.collect()
 }
 
 fn create_gbuffers(device: &Arc<Device>, dimensions: [u32; 2]) -> GBuffers {
+	let depth =
+		Arc::new(AttachmentImage::transient_input_attachment(device.clone(), dimensions, DEPTH_FORMAT).unwrap());
 	let diffuse =
 		Arc::new(AttachmentImage::transient_input_attachment(device.clone(), dimensions, DIFFUSE_FORMAT).unwrap());
 	let normal =
 		Arc::new(AttachmentImage::transient_input_attachment(device.clone(), dimensions, NORMAL_FORMAT).unwrap());
-	let depth =
-		Arc::new(AttachmentImage::transient_input_attachment(device.clone(), dimensions, DEPTH_FORMAT).unwrap());
+	let position =
+		Arc::new(AttachmentImage::transient_input_attachment(device.clone(), dimensions, POSITION_FORMAT).unwrap());
 
-	GBuffers { diffuse, normal, depth }
+	GBuffers { diffuse, normal, depth, position }
 }
 
 struct GBuffers {
+	depth: Arc<dyn ImageViewAccess + Send + Sync>,
 	diffuse: Arc<dyn ImageViewAccess + Send + Sync>,
 	normal: Arc<dyn ImageViewAccess + Send + Sync>,
-	depth: Arc<dyn ImageViewAccess + Send + Sync>,
+	position: Arc<dyn ImageViewAccess + Send + Sync>,
 }
 
 fn create_geom_pipeline(
@@ -169,6 +174,7 @@ fn create_geom_pipeline(
 			.vertex_shader(vshader.main_entry_point(), ())
 			.fragment_shader(fshader.main_entry_point(), ())
 			.triangle_list()
+			.cull_mode_back()
 			.viewports(vec![Viewport { origin: [0.0, 0.0], dimensions, depth_range: 0.0..1.0 }])
 			.render_pass(Subpass::from(render_pass, 0).unwrap())
 			.depth_stencil_simple_depth()
@@ -204,13 +210,10 @@ where
 {
 	Arc::new(
 		PersistentDescriptorSet::start(layout, 0)
-			.add_image(gbuffers.diffuse.clone())
-			.unwrap()
-			.add_image(gbuffers.normal.clone())
-			.unwrap()
-			.add_image(gbuffers.depth.clone())
-			.unwrap()
-			.build()
-			.unwrap(),
+			.add_image(gbuffers.depth.clone()).unwrap()
+			.add_image(gbuffers.diffuse.clone()).unwrap()
+			.add_image(gbuffers.normal.clone()).unwrap()
+			.add_image(gbuffers.position.clone()).unwrap()
+			.build().unwrap(),
 	)
 }

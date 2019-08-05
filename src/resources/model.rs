@@ -141,15 +141,15 @@ pub(crate) fn from_nice_model(
 
 	let native_tex = |path: &Path| -> Option<(Texture, Box<dyn GpuFuture + Send + Sync>)> {
 		let mut fp = File::open(path).unwrap();
-		let mut magic_number = [0; 4];
+		let mut magic_number = [0; 3];
 		fp.read_exact(&mut magic_number).unwrap();
-		if &magic_number != b"ntex" {
+		if &magic_number != b"ntx" {
 			return None;
 		}
 		println!(" => loader: native");
+		let format = fp.read_u8().unwrap();
 		let width = fp.read_u16::<LE>().unwrap();
 		let height = fp.read_u16::<LE>().unwrap();
-		let format = fp.read_u8().unwrap();
 		println!(" => resolution: {}x{}", width, height);
 
 		let (bpp, fmt) = match format {
@@ -184,8 +184,9 @@ pub(crate) fn from_nice_model(
 		file.seek(SeekFrom::Start(path_offset)).unwrap();
 		let mut buf = vec![0; path_size];
 		file.read_exact(&mut buf).unwrap();
-		let path_str = String::from_utf8(buf).unwrap();
+		let mut path_str = String::from_utf8(buf).unwrap();
 		println!("load_tex({}):", path_str);
+		if path_str.is_empty() { path_str = "default.ntx".to_string(); };
 		let path = path.as_ref().parent().unwrap().join(path_str);
 		native_tex(&path).unwrap_or_else(|| import_tex(&path))
 	};

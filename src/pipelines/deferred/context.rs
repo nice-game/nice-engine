@@ -1,6 +1,6 @@
 use super::{
 	geom_fshader, geom_vshader, pipeline::DeferredPipeline, swap_fshader, swap_vshader, Vert2D, DEPTH_FORMAT,
-	DIFFUSE_FORMAT, NORMAL_FORMAT,
+	DIFFUSE_FORMAT, NORMAL_FORMAT, POSITION_FORMAT,
 };
 use crate::{
 	pipelines::{Pipeline, PipelineContext},
@@ -25,14 +25,15 @@ impl DeferredPipelineContext {
 			vulkano::ordered_passes_renderpass!(
 				device.clone(),
 				attachments: {
-					diffuse: { load: Clear, store: DontCare, format: DIFFUSE_FORMAT, samples: 1, },
-					normal: { load: Clear, store: DontCare, format: NORMAL_FORMAT, samples: 1, },
-					depth: { load: Clear, store: DontCare, format: DEPTH_FORMAT, samples: 1, },
-					color: { load: Clear, store: Store, format: SWAP_FORMAT, samples: 1, }
+					depth:		{ load: Clear,	store: DontCare,	format: DEPTH_FORMAT,		samples: 1, },
+					diffuse:	{ load: Clear,	store: DontCare,	format: DIFFUSE_FORMAT,		samples: 1, },
+					normal:		{ load: Clear,	store: DontCare,	format: NORMAL_FORMAT,		samples: 1, },
+					position:	{ load: Clear,	store: DontCare,	format: POSITION_FORMAT,	samples: 1, },
+					color:		{ load: Clear,	store: Store,		format: SWAP_FORMAT,		samples: 1, }
 				},
 				passes: [
-					{ color: [diffuse, normal], depth_stencil: {depth}, input: [] },
-					{ color: [color], depth_stencil: {}, input: [diffuse, normal, depth] }
+					{ color: [diffuse, normal, position], depth_stencil: {depth}, input: [] },
+					{ color: [color], depth_stencil: {}, input: [depth, diffuse, normal, position] }
 				]
 			)
 			.unwrap(),
