@@ -1,6 +1,7 @@
 use crate::Context;
 use std::sync::Arc;
 use vulkano::{
+	buffer::{BufferAccess, TypedBufferAccess},
 	device::Queue,
 	format::{AcceptsPixels, Format, FormatDesc},
 	image::{Dimensions, ImageCreationError, ImageViewAccess, ImmutableImage},
@@ -29,6 +30,27 @@ impl Texture {
 			Dimensions::Dim2d { width: dimensions[0], height: dimensions[1] },
 			format,
 			ctx.queue().clone(),
+		)?;
+		Ok((Self { image }, future))
+	}
+
+	pub(crate) fn from_buffer<F, B, P>(
+		queue: Arc<Queue>,
+		buffer: B,
+		dimensions: [u32; 2],
+		format: F,
+	) -> Result<(Self, impl GpuFuture), ImageCreationError>
+	where
+		F: FormatDesc + AcceptsPixels<P> + 'static + Send + Sync,
+		B: BufferAccess + TypedBufferAccess<Content = [P]> + 'static + Clone + Send + Sync,
+		P: Send + Sync + Clone + 'static,
+		Format: AcceptsPixels<P>,
+	{
+		let (image, future) = ImmutableImage::from_buffer(
+			buffer,
+			Dimensions::Dim2d { width: dimensions[0], height: dimensions[1] },
+			format,
+			queue,
 		)?;
 		Ok((Self { image }, future))
 	}
