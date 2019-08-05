@@ -14,7 +14,8 @@ use vulkano::{
 const DIFFUSE_FORMAT: Format = Format::A2B10G10R10UnormPack32;
 const POSITION_FORMAT: Format = Format::R32G32B32A32Sfloat;
 const NORMAL_FORMAT: Format = Format::R16G16B16A16Sfloat;
-const DEPTH_FORMAT: Format = Format::D16Unorm;
+const DEPTH_FORMAT: Format = Format::D32Sfloat;
+const ALT_DEPTH_FORMAT: Format = Format::X8_D24UnormPack32;
 
 pub struct DeferredPipelineDef;
 impl PipelineDef for DeferredPipelineDef {
@@ -100,8 +101,9 @@ layout(set = 0, binding = 0) uniform sampler2D tex;
 
 void main() {
 	vec4 tex = texture(tex, texc);
-	if (tex.w < 0.5) discard;
-	color = vec4(sqrt(tex.rgb), 0);
+	if (tex.w < 0.125) discard;
+	//tex.rgb = sqrt(tex.rgb); // FIXME: do this for srgb or linear textures, skip it for quadratic textures.
+	color = vec4(tex.rgb, 0);
 	normal = vec4(nor, 0);
 	position = vec4(pos, 0);
 }
@@ -184,10 +186,10 @@ void main() {
 //	dlight += vec3(0.10, 0.09, 0.08) * max(0, dot(normal_ws.xyz, -normalize(vec3(1,2,3))));
 //	dlight += vec3(0.08, 0.09, 0.10) * max(0, dot(normal_ws.xyz, normalize(vec3(1.75,1.25,3))));
 	
-	//float gridSize = 1.0;
-	//bool grid = (mod(position_ws.x, gridSize) > gridSize*0.5);
-	//if (mod(position_ws.y, gridSize) > gridSize*0.5) grid = !grid;
-	//if (mod(position_ws.z, gridSize) > gridSize*0.5) grid = !grid;
+	float gridSize = 1.0;
+	bool grid = (mod(position_ws.x, gridSize) > gridSize*0.5);
+	if (mod(position_ws.y, gridSize) > gridSize*0.5) grid = !grid;
+	if (mod(position_ws.z, gridSize) > gridSize*0.5) grid = !grid;
 
 	vec3 specColor = vec3(0.04); // IRL everything except metal reflects about 4%
 	float specExponent = 20.0;
@@ -196,18 +198,25 @@ void main() {
 	//float specNorm = (specExponent + 2) * (specExponent + 4) / ((8 * 3.14159) * (specExponent + 1.0 / pow(2.0, specExponent / 2.0))); // exact
 
 
+	float lightCutoff = 0.01;
+	vec3 grayWeights = vec3(0.2126, 0.7152, 0.0722);
+
 	vec3 lightColor = vec3(10.0, 7.5, 5.625);
+	float lightRadius = sqrt(pow(dot(lightColor, grayWeights), 1.0/3.0) / lightCutoff);
 	vec3 lightPos = vec3(23.0, 18.0, -12.0);
 	vec3 lightOffset = lightPos - position_ws;
 	float lightFalloff = max(0.0, dot(normal_ws, normalize(lightOffset))) / (1.0 + dot(lightOffset, lightOffset));
+	lightFalloff *= sqrt(1.0 - min(1.0, length(lightOffset) / lightRadius));
 	float lightSpecular = pow(max(0.0, dot(normalize(normalize(lightPos - position_ws) + normalize(pc.CameraOffset - position_ws)), normal_ws)), specExponent);
 	dlight += lightColor * lightFalloff;
 	slight += lightColor * lightFalloff * lightSpecular * specNorm * specColor;
 	
 	lightColor = vec3(5.625, 7.5, 10.0);
+	lightRadius = sqrt(pow(dot(lightColor, grayWeights), 1.0/3.0) / lightCutoff);
 	lightPos = vec3(5.2, 21.8, -12.0);
 	lightOffset = lightPos - position_ws;
 	lightFalloff = max(0.0, dot(normal_ws, normalize(lightOffset))) / (1.0 + dot(lightOffset, lightOffset));
+	lightFalloff *= sqrt(1.0 - min(1.0, length(lightOffset) / lightRadius));
 	lightSpecular = pow(max(0.0, dot(normalize(normalize(lightPos - position_ws) + normalize(pc.CameraOffset - position_ws)), normal_ws)), specExponent);
 	dlight += lightColor * lightFalloff;
 	slight += lightColor * lightFalloff * lightSpecular * specNorm * specColor;

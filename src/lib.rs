@@ -72,7 +72,7 @@ impl Context {
 		let pdevice = PhysicalDevice::enumerate(&instance)
 			.max_by_key(|pd| pd.supported_features().superset_of(&features))
 			.unwrap();
-		info!("Using device: {} ({:?})", pdevice.name(), pdevice.ty());
+		println!("Using device: {} ({:?})", pdevice.name(), pdevice.ty());
 
 		let features = pdevice.supported_features().intersection(&features);
 		let qfam =
