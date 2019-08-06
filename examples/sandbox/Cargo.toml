@@ -1,0 +1,12 @@
+[package]
+name = "sandbox"
+version = "0.1.0"
+authors = ["IcyDefiance <icydefiance@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+cgmath = "0.17.0"
+nice-engine = { path = "../.." }
+simplelog = "0.5"
+vulkano = "0.13.0"
+winit = "0.19.1"

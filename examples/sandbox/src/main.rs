@@ -1,15 +1,18 @@
 use cgmath::{prelude::*, vec3, Deg, Quaternion};
 use nice_engine::{camera::Camera, window::Window, Context};
+use simplelog::{ LevelFilter, SimpleLogger };
 use vulkano::sync::GpuFuture;
 use winit::{dpi::LogicalSize, Event, EventsLoop, VirtualKeyCode, WindowEvent};
 
 pub fn main() {
+	SimpleLogger::init(LevelFilter::Debug, simplelog::Config::default()).unwrap();
+
 	let (ctx, ctx_future) = Context::new(Some("nIce Engine"), None).unwrap();
 	let mut events = EventsLoop::new();
 	let mut win = Window::new(&ctx, &events).unwrap();
 
 	let mut map = ctx.resources().lock().unwrap().get_model("assets/de_rebelzone/de_rebelzone.nmd");
-	map.transform_mut().rot = Quaternion::from_angle_x(Deg(90.0));// * Quaternion::from_angle_y(Deg(45.0));
+	map.transform_mut().rot = Quaternion::from_angle_x(Deg(90.0));
 
 	let mut cam = Camera::new();
 	cam.transform_mut().pos = vec3(17.0, 36.5, -12.0);
