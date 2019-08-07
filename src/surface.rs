@@ -1,4 +1,4 @@
-use crate::{camera::Camera, mesh::Mesh, pipelines::Pipeline, Context};
+use crate::{camera::Camera, mesh::Mesh, direct_light::DirectLight, pipelines::Pipeline, Context};
 use std::{os::raw::c_ulong, sync::Arc};
 use vulkano::{
 	device::{Device, Queue},
@@ -26,7 +26,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		Self::new_inner(ctx, surface)
 	}
 
-	pub fn draw(&mut self, cam: &Camera, meshes: &[&Mesh]) {
+	pub fn draw(&mut self, cam: &Camera, meshes: &[&Mesh], lights: &[&DirectLight]) {
 		let mut prev_frame_end = self.prev_frame_end.take().unwrap();
 		prev_frame_end.cleanup_finished();
 
@@ -41,7 +41,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 
 		let future = prev_frame_end
 			.join(acquire_future)
-			.then_execute(self.queue.clone(), self.pipeline.draw(image_num, self.queue.family(), cam, meshes))
+			.then_execute(self.queue.clone(), self.pipeline.draw(image_num, self.queue.family(), cam, meshes, lights))
 			.unwrap()
 			.then_swapchain_present(self.queue.clone(), self.swapchain.clone(), image_num)
 			.then_signal_fence_and_flush();

@@ -1,7 +1,7 @@
 use super::{
 	context::ForwardPipelineContextInner, depth_fshader, depth_vshader, swap_fshader, swap_vshader, DEPTH_FORMAT,
 };
-use crate::{camera::Camera, mesh::Mesh, mesh_data, pipelines::Pipeline};
+use crate::{camera::Camera, mesh::Mesh, mesh_data, direct_light::DirectLight, pipelines::Pipeline};
 use std::sync::Arc;
 use vulkano::{
 	buffer::BufferAccess,
@@ -38,7 +38,7 @@ impl ForwardPipeline {
 	}
 }
 impl Pipeline for ForwardPipeline {
-	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[&Mesh]) -> AutoCommandBuffer {
+	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[&Mesh], lights: &[&DirectLight]) -> AutoCommandBuffer {
 		let clear_values = vec![[0.0, 0.0, 0.25, 1.0].into()];
 
 		let make_pc = |mesh: &Mesh| swap_vshader::ty::PushConsts {

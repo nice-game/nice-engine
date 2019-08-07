@@ -164,8 +164,6 @@ vec3 inv_perspective(vec4 Projection, vec3 Position) {
 }
 
 void main() {
-	//vec2 Resolution = vec2(1440.0, 810.0, 1.0/1440.0, 1.0/810.0);
-
 	vec4 layer0 = subpassLoad(g_depth);
 	vec4 layer1 = subpassLoad(g_color);
 	vec4 layer2 = subpassLoad(g_normal);
@@ -180,43 +178,50 @@ void main() {
 	//vec3 position_cs = vec3(position_es.x, -position_es.z, -position_es.y);
 	//vec3 position_ws = quat_mul(pc.CameraRotation.yzwx, position_cs) + pc.CameraOffset;
 	
-	vec3 dlight = vec3(0.02);
+	vec3 dlight = vec3(0.0);
 	vec3 slight = vec3(0.0);
 
 //	dlight += vec3(0.10, 0.09, 0.08) * max(0, dot(normal_ws.xyz, -normalize(vec3(1,2,3))));
 //	dlight += vec3(0.08, 0.09, 0.10) * max(0, dot(normal_ws.xyz, normalize(vec3(1.75,1.25,3))));
-	
+
 	float gridSize = 1.0;
 	bool grid = (mod(position_ws.x, gridSize) > gridSize*0.5);
 	if (mod(position_ws.y, gridSize) > gridSize*0.5) grid = !grid;
 	if (mod(position_ws.z, gridSize) > gridSize*0.5) grid = !grid;
 
 	vec3 specColor = vec3(0.04); // IRL everything except metal reflects about 4%
-	float specExponent = 20.0;
+	float specExponent = 64.0;
 	//if (grid) specExponent = 500.0;
 	float specNorm = specExponent * 0.03978873577297383 + 0.2785211504108169;
 	//float specNorm = (specExponent + 2) * (specExponent + 4) / ((8 * 3.14159) * (specExponent + 1.0 / pow(2.0, specExponent / 2.0))); // exact
 
 
-	float lightCutoff = 0.01;
+	float lightCutoff = 0.003035269835488375;
 	vec3 grayWeights = vec3(0.2126, 0.7152, 0.0722);
 
-	vec3 lightColor = vec3(10.0, 7.5, 5.625);
-	float lightRadius = sqrt(pow(dot(lightColor, grayWeights), 1.0/3.0) / lightCutoff);
+	float lightRadius = 32.0;
+	//float lightRadius = sqrt(pow(dot(lightColor, grayWeights), 1.0/3.0) / lightCutoff);
+
+	vec3 lightColor = vec3(1.0, 0.75, 0.5625);
 	vec3 lightPos = vec3(23.0, 18.0, -12.0);
 	vec3 lightOffset = lightPos - position_ws;
-	float lightFalloff = max(0.0, dot(normal_ws, normalize(lightOffset))) / (1.0 + dot(lightOffset, lightOffset));
-	lightFalloff *= sqrt(1.0 - min(1.0, length(lightOffset) / lightRadius));
+	float lightFalloff = min(1.0, length(lightOffset) / lightRadius);
+	lightFalloff *= lightFalloff; lightFalloff *= lightFalloff;
+	lightFalloff = 1.0 - lightFalloff; lightFalloff = mix(lightFalloff * lightFalloff, lightFalloff, 0.3095);
+	lightFalloff *= max(0.0, dot(normal_ws, normalize(lightOffset))) / (1.0 + dot(lightOffset, lightOffset));
+	lightFalloff *= lightRadius * lightRadius * lightCutoff;
 	float lightSpecular = pow(max(0.0, dot(normalize(normalize(lightPos - position_ws) + normalize(pc.CameraOffset - position_ws)), normal_ws)), specExponent);
 	dlight += lightColor * lightFalloff;
 	slight += lightColor * lightFalloff * lightSpecular * specNorm * specColor;
 	
-	lightColor = vec3(5.625, 7.5, 10.0);
-	lightRadius = sqrt(pow(dot(lightColor, grayWeights), 1.0/3.0) / lightCutoff);
+	lightColor = vec3(0.5625, 0.75, 1.0);
 	lightPos = vec3(5.2, 21.8, -12.0);
 	lightOffset = lightPos - position_ws;
-	lightFalloff = max(0.0, dot(normal_ws, normalize(lightOffset))) / (1.0 + dot(lightOffset, lightOffset));
-	lightFalloff *= sqrt(1.0 - min(1.0, length(lightOffset) / lightRadius));
+	lightFalloff = min(1.0, length(lightOffset) / lightRadius);
+	lightFalloff *= lightFalloff; lightFalloff *= lightFalloff;
+	lightFalloff = 1.0 - lightFalloff; lightFalloff = mix(lightFalloff * lightFalloff, lightFalloff, 0.3095);
+	lightFalloff *= max(0.0, dot(normal_ws, normalize(lightOffset))) / (1.0 + dot(lightOffset, lightOffset));
+	lightFalloff *= lightRadius * lightRadius * lightCutoff;
 	lightSpecular = pow(max(0.0, dot(normalize(normalize(lightPos - position_ws) + normalize(pc.CameraOffset - position_ws)), normal_ws)), specExponent);
 	dlight += lightColor * lightFalloff;
 	slight += lightColor * lightFalloff * lightSpecular * specNorm * specColor;

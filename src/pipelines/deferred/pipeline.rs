@@ -2,7 +2,7 @@ use super::{
 	context::DeferredPipelineContextInner, geom_fshader, geom_vshader, swap_fshader, swap_vshader, Vert2D,
 	DEPTH_FORMAT, DIFFUSE_FORMAT, NORMAL_FORMAT, POSITION_FORMAT,
 };
-use crate::{camera::Camera, mesh::Mesh, mesh_data, pipelines::Pipeline};
+use crate::{camera::Camera, mesh::Mesh, mesh_data, direct_light::DirectLight, pipelines::Pipeline};
 use std::sync::Arc;
 use vulkano::{
 	buffer::BufferAccess,
@@ -42,7 +42,7 @@ impl DeferredPipeline {
 	}
 }
 impl Pipeline for DeferredPipeline {
-	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[&Mesh]) -> AutoCommandBuffer {
+	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[&Mesh], lights: &[&DirectLight]) -> AutoCommandBuffer {
 		let clear_values = vec![1.0.into(), [0.0, 0.0, 0.0, 1.0].into(), [0.0; 4].into(), [0.0; 4].into(), [0.0; 4].into()];
 
 		let make_pc = |mesh: &Mesh| geom_vshader::ty::PushConsts {

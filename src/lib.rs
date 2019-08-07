@@ -6,6 +6,7 @@ pub mod resources;
 pub mod surface;
 pub mod texture;
 pub mod transform;
+pub mod direct_light;
 #[cfg(feature = "window")]
 pub mod window;
 
