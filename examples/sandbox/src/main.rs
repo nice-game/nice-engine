@@ -13,6 +13,7 @@ pub fn main() {
 
 	let mut map = ctx.resources().lock().unwrap().get_model("assets/de_rebelzone/de_rebelzone.nmd");
 	map.transform_mut().rot = Quaternion::from_angle_x(Deg(90.0));
+	ctx.world().add_mesh(map);
 
 	let mut cam = Camera::new();
 	cam.transform_mut().pos = vec3(17.0, 36.5, -12.0);
@@ -23,11 +24,13 @@ pub fn main() {
 	light1.position = vec3(23.0, 18.0, -12.0);
 	light1.color = vec3(1.0, 0.75, 0.5625);
 	light1.radius = 32.0;
+	ctx.world().add_light(light1);
 
 	let mut light2 = DirectLight::new();
 	light2.position = vec3(5.2, 21.8, -12.0);
 	light2.color = vec3(0.5625, 0.75, 1.0);
 	light2.radius = 32.0;
+	ctx.world().add_light(light2);
 
 	ctx_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 
@@ -91,7 +94,7 @@ pub fn main() {
 			break;
 		}
 
-		map.refresh();
-		win.surface().draw(&cam, &[&map], &[&light1, &light2]);
+		//map.refresh();
+		win.surface().draw(&cam);
 	}
 }

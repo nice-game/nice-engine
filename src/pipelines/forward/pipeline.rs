@@ -38,7 +38,7 @@ impl ForwardPipeline {
 	}
 }
 impl Pipeline for ForwardPipeline {
-	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[&Mesh], lights: &[&DirectLight]) -> AutoCommandBuffer {
+	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[Mesh], _lights: &[DirectLight]) -> AutoCommandBuffer {
 		let clear_values = vec![[0.0, 0.0, 0.25, 1.0].into()];
 
 		let make_pc = |mesh: &Mesh| swap_vshader::ty::PushConsts {

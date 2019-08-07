@@ -1,4 +1,4 @@
-use crate::{camera::Camera, mesh::Mesh, direct_light::DirectLight, pipelines::Pipeline, Context};
+use crate::{camera::Camera, pipelines::Pipeline, world::World, Context};
 use std::{os::raw::c_ulong, sync::Arc};
 use vulkano::{
 	device::{Device, Queue},
@@ -19,6 +19,7 @@ pub struct Surface<W: Send + Sync + 'static = ()> {
 	swapchain: Arc<Swapchain<W>>,
 	pipeline: Box<dyn Pipeline>,
 	prev_frame_end: Option<Box<dyn GpuFuture>>,
+	world: Arc<World>,
 }
 impl<W: Send + Sync + 'static> Surface<W> {
 	#[cfg(feature = "window")]
@@ -26,7 +27,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		Self::new_inner(ctx, surface)
 	}
 
-	pub fn draw(&mut self, cam: &Camera, meshes: &[&Mesh], lights: &[&DirectLight]) {
+	pub fn draw(&mut self, cam: &Camera) {
 		let mut prev_frame_end = self.prev_frame_end.take().unwrap();
 		prev_frame_end.cleanup_finished();
 
@@ -39,9 +40,16 @@ impl<W: Send + Sync + 'static> Surface<W> {
 			Err(err) => panic!("{:?}", err),
 		};
 
+		let mut meshes = self.world.meshes().lock().unwrap();
+		for mesh in &mut *meshes {
+			mesh.refresh();
+		}
+
+		let lights = self.world.lights().lock().unwrap();
+		
 		let future = prev_frame_end
 			.join(acquire_future)
-			.then_execute(self.queue.clone(), self.pipeline.draw(image_num, self.queue.family(), cam, meshes, lights))
+			.then_execute(self.queue.clone(), self.pipeline.draw(image_num, self.queue.family(), cam, &*meshes, &*lights))
 			.unwrap()
 			.then_swapchain_present(self.queue.clone(), self.swapchain.clone(), image_num)
 			.then_signal_fence_and_flush();
@@ -106,7 +114,9 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		let pipeline = ctx.pipeline_ctx().make_pipeline(images.into_iter().map(|i| i as _).collect(), dimensions);
 		let prev_frame_end = Some(Box::new(sync::now(device.clone())) as Box<dyn GpuFuture>);
 
-		Self { device, queue, surface, swapchain, pipeline, prev_frame_end }
+		let world = ctx.world().clone();
+
+		Self { device, queue, surface, swapchain, pipeline, prev_frame_end, world }
 	}
 }
 impl Surface<()> {

@@ -7,7 +7,6 @@ use super::{
 		DEPTH_FORMAT, DIFFUSE_FORMAT, NORMAL_FORMAT, POSITION_FORMAT, LIGHT_FORMAT,
 };
 use crate::{camera::Camera, mesh::Mesh, mesh_data, direct_light::DirectLight, pipelines::Pipeline};
-use cgmath::{prelude::*, Vector3, vec3, vec4};
 use std::sync::Arc;
 use vulkano::{
 	buffer::BufferAccess,
@@ -52,7 +51,7 @@ impl DeferredPipeline {
 	}
 }
 impl Pipeline for DeferredPipeline {
-	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[&Mesh], lights: &[&DirectLight]) -> AutoCommandBuffer {
+	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[Mesh], lights: &[DirectLight]) -> AutoCommandBuffer {
 		let clear_values = vec![1.0.into(), [0.0, 0.0, 0.0, 1.0].into(), [0.0; 4].into(), [0.0; 4].into(), [0.0; 4].into(), [0.0; 4].into()];
 
 		let make_pc = |mesh: &Mesh| geom_vshader::ty::PushConsts {
@@ -70,7 +69,7 @@ impl Pipeline for DeferredPipeline {
 				.unwrap()
 				.begin_render_pass(self.framebuffers[image_num].clone(), false, clear_values)
 				.unwrap();
-		for &mesh in meshes {
+		for mesh in meshes {
 			let mesh_data = mesh.mesh_data().as_ref().unwrap();
 			for mat in mesh.texture_descs() {
 				command_buffer = command_buffer
@@ -87,9 +86,9 @@ impl Pipeline for DeferredPipeline {
 		}
 
 		command_buffer = command_buffer.next_subpass(false).unwrap();
-		for &light in lights {
-			let lightCutoff = 0.003035269835488375;
-			let radiusSquared = light.radius * light.radius;
+		for light in lights {
+			let light_cutoff = 0.003035269835488375;
+			let radius_squared = light.radius * light.radius;
 
 			command_buffer = command_buffer
 				.draw_indexed(
@@ -99,12 +98,17 @@ impl Pipeline for DeferredPipeline {
 					self.ctx.indices.clone(),
 					self.gbuffers_desc_light.clone(),
 					light_fshader::ty::PushConsts {
-						Resolution: [self.dimensions[0] as f32, self.dimensions[1] as f32, 1.0/(self.dimensions[0] as f32), 1.0/(self.dimensions[1] as f32)],
+						Resolution: [
+							self.dimensions[0] as f32,
+							self.dimensions[1] as f32,
+							1.0 / (self.dimensions[0] as f32),
+							1.0 / (self.dimensions[1] as f32),
+						],
 						Projection: cam.projection().into(),
 						CameraRotation: cam.transform().rot.into(),
 						CameraOffset: cam.transform().pos.into(),
-						LightPosition: [light.position.x, light.position.y, light.position.z, 1.0 / radiusSquared],
-						LightColor: [light.color.x, light.color.y, light.color.z, lightCutoff * radiusSquared],
+						LightPosition: [light.position.x, light.position.y, light.position.z, 1.0 / radius_squared],
+						LightColor: [light.color.x, light.color.y, light.color.z, light_cutoff * radius_squared],
 						_dummy0: unsafe { std::mem::uninitialized() },
 					},
 				).unwrap();

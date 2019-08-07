@@ -12,8 +12,7 @@ use vulkano::{
 };
 
 const DEPTH_FORMAT: Format = Format::D32Sfloat;
-const ALT_DEPTH_FORMAT: Format = Format::X8_D24UnormPack32;
-
+//const ALT_DEPTH_FORMAT: Format = Format::X8_D24UnormPack32;
 const DIFFUSE_FORMAT: Format = Format::A2B10G10R10UnormPack32;
 const POSITION_FORMAT: Format = Format::R32G32B32A32Sfloat;
 const NORMAL_FORMAT: Format = Format::R32G32B32A32Sfloat;

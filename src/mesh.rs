@@ -3,7 +3,6 @@ use crate::{
 	texture::{ImmutableTexture, Texture},
 	transform::Transform,
 };
-use log::debug;
 use std::{ops::Range, sync::Arc};
 use vulkano::{
 	descriptor::{descriptor_set::PersistentDescriptorSet, DescriptorSet, PipelineLayoutAbstract},

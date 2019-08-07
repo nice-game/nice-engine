@@ -26,6 +26,6 @@ pub trait PipelineContext {
 }
 
 pub trait Pipeline {
-	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[&Mesh], lights: &[&DirectLight]) -> AutoCommandBuffer;
+	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[Mesh], lights: &[DirectLight]) -> AutoCommandBuffer;
 	fn resize(&mut self, images: Vec<Arc<dyn ImageViewAccess + Send + Sync>>, dimensions: [u32; 2]);
 }
