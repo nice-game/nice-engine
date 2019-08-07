@@ -13,6 +13,7 @@ pub fn main() {
 
 	let mut map = ctx.resources().lock().unwrap().get_model("assets/de_rebelzone/de_rebelzone.nmd");
 	map.transform_mut().rot = Quaternion::from_angle_x(Deg(90.0));
+	ctx.world().add_mesh(map);
 
 	let mut cam = Camera::new();
 	cam.transform_mut().pos = vec3(17.0, 36.5, -12.0);
@@ -81,7 +82,6 @@ pub fn main() {
 			break;
 		}
 
-		map.refresh();
-		win.surface().draw(&cam, &[&map]);
+		win.surface().draw(&cam);
 	}
 }

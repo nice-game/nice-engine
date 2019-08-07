@@ -42,8 +42,9 @@ impl DeferredPipeline {
 	}
 }
 impl Pipeline for DeferredPipeline {
-	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[&Mesh]) -> AutoCommandBuffer {
-		let clear_values = vec![1.0.into(), [0.0, 0.0, 0.0, 1.0].into(), [0.0; 4].into(), [0.0; 4].into(), [0.0; 4].into()];
+	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[Mesh]) -> AutoCommandBuffer {
+		let clear_values =
+			vec![1.0.into(), [0.0, 0.0, 0.0, 1.0].into(), [0.0; 4].into(), [0.0; 4].into(), [0.0; 4].into()];
 
 		let make_pc = |mesh: &Mesh| geom_vshader::ty::PushConsts {
 			cam_proj: cam.projection().into(),
@@ -60,7 +61,7 @@ impl Pipeline for DeferredPipeline {
 				.unwrap()
 				.begin_render_pass(self.framebuffers[image_num].clone(), false, clear_values)
 				.unwrap();
-		for &mesh in meshes {
+		for mesh in meshes {
 			let mesh_data = mesh.mesh_data().as_ref().unwrap();
 			for mat in mesh.texture_descs() {
 				command_buffer = command_buffer
@@ -86,7 +87,12 @@ impl Pipeline for DeferredPipeline {
 				self.ctx.indices.clone(),
 				self.gbuffers_desc.clone(),
 				swap_fshader::ty::PushConsts {
-					Resolution: [self.dimensions[0] as f32, self.dimensions[1] as f32, 1.0/(self.dimensions[0] as f32), 1.0/(self.dimensions[1] as f32)],
+					Resolution: [
+						self.dimensions[0] as f32,
+						self.dimensions[1] as f32,
+						1.0 / (self.dimensions[0] as f32),
+						1.0 / (self.dimensions[1] as f32),
+					],
 					Projection: cam.projection().into(),
 					CameraRotation: cam.transform().rot.into(),
 					CameraOffset: cam.transform().pos.into(),
@@ -129,12 +135,18 @@ fn create_framebuffers(
 		.map(|image| {
 			Arc::new(
 				Framebuffer::start(swap_pass.clone())
-					.add(gbuffers.depth.clone()).unwrap()
-					.add(gbuffers.diffuse.clone()).unwrap()
-					.add(gbuffers.normal.clone()).unwrap()
-					.add(gbuffers.position.clone()).unwrap()
-					.add(image).unwrap()
-					.build().unwrap(),
+					.add(gbuffers.depth.clone())
+					.unwrap()
+					.add(gbuffers.diffuse.clone())
+					.unwrap()
+					.add(gbuffers.normal.clone())
+					.unwrap()
+					.add(gbuffers.position.clone())
+					.unwrap()
+					.add(image)
+					.unwrap()
+					.build()
+					.unwrap(),
 			) as Arc<dyn FramebufferAbstract + Send + Sync>
 		})
 		.collect()
@@ -210,10 +222,15 @@ where
 {
 	Arc::new(
 		PersistentDescriptorSet::start(layout, 0)
-			.add_image(gbuffers.depth.clone()).unwrap()
-			.add_image(gbuffers.diffuse.clone()).unwrap()
-			.add_image(gbuffers.normal.clone()).unwrap()
-			.add_image(gbuffers.position.clone()).unwrap()
-			.build().unwrap(),
+			.add_image(gbuffers.depth.clone())
+			.unwrap()
+			.add_image(gbuffers.diffuse.clone())
+			.unwrap()
+			.add_image(gbuffers.normal.clone())
+			.unwrap()
+			.add_image(gbuffers.position.clone())
+			.unwrap()
+			.build()
+			.unwrap(),
 	)
 }

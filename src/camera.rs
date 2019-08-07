@@ -11,10 +11,6 @@ impl Camera {
 		Camera { proj: Vector4::zero(), transform: Transform::default() }
 	}
 
-	pub fn projection(&self) -> Vector4<f32> {
-		self.proj
-	}
-
 	pub fn set_perspective(&mut self, aspect: f32, fovx: f32, znear: f32, zfar: f32) {
 		self.proj = projection(aspect, fovx, znear, zfar);
 	}
@@ -25,6 +21,10 @@ impl Camera {
 
 	pub fn transform_mut(&mut self) -> &mut Transform {
 		&mut self.transform
+	}
+
+	pub(crate) fn projection(&self) -> Vector4<f32> {
+		self.proj
 	}
 }
 
