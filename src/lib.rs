@@ -7,6 +7,7 @@ pub mod surface;
 pub mod texture;
 mod threads;
 pub mod transform;
+pub mod direct_light;
 #[cfg(feature = "window")]
 pub mod window;
 pub mod world;

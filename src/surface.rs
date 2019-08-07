@@ -45,9 +45,11 @@ impl<W: Send + Sync + 'static> Surface<W> {
 			mesh.refresh();
 		}
 
+		let lights = self.world.lights().lock().unwrap();
+		
 		let future = prev_frame_end
 			.join(acquire_future)
-			.then_execute(self.queue.clone(), self.pipeline.draw(image_num, self.queue.family(), cam, &*meshes))
+			.then_execute(self.queue.clone(), self.pipeline.draw(image_num, self.queue.family(), cam, &*meshes, &*lights))
 			.unwrap()
 			.then_swapchain_present(self.queue.clone(), self.swapchain.clone(), image_num)
 			.then_signal_fence_and_flush();
