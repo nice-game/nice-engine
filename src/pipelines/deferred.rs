@@ -11,11 +11,13 @@ use vulkano::{
 	format::Format,
 };
 
-const DIFFUSE_FORMAT: Format = Format::A2B10G10R10UnormPack32;
-const POSITION_FORMAT: Format = Format::R32G32B32A32Sfloat;
-const NORMAL_FORMAT: Format = Format::R16G16B16A16Sfloat;
 const DEPTH_FORMAT: Format = Format::D32Sfloat;
 const ALT_DEPTH_FORMAT: Format = Format::X8_D24UnormPack32;
+
+const DIFFUSE_FORMAT: Format = Format::A2B10G10R10UnormPack32;
+const POSITION_FORMAT: Format = Format::R32G32B32A32Sfloat;
+const NORMAL_FORMAT: Format = Format::R32G32B32A32Sfloat;
+const LIGHT_FORMAT: Format = Format::R32G32B32A32Sfloat;
 
 pub struct DeferredPipelineDef;
 impl PipelineDef for DeferredPipelineDef {
@@ -140,12 +142,61 @@ layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput g_
 layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput g_color;
 layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput g_normal;
 layout(input_attachment_index = 3, set = 0, binding = 3) uniform subpassInput g_position;
+layout(input_attachment_index = 4, set = 0, binding = 4) uniform subpassInput g_light;
+
+layout(push_constant) uniform PushConsts {
+	float Exposure;
+} pc;
+
+void main() {
+	float depth = subpassLoad(g_depth).x;
+	vec3 color = subpassLoad(g_light).rgb;
+	color *= pc.Exposure;
+	color /= 1.0 + color;
+	pixel = vec4(color, 0);
+}
+"
+	}
+}
+
+mod light_vshader {
+	vulkano_shaders::shader! {
+		ty: "vertex",
+		src: "
+#version 450
+layout(location = 0) in vec2 pos;
+layout(location = 2) in vec2 texc;
+
+layout(location = 0) out vec2 out_texc;
+
+void main() {
+	out_texc = texc;
+	gl_Position = vec4(pos, 0, 1);
+}"
+	}
+}
+
+mod light_fshader {
+	vulkano_shaders::shader! {
+		ty: "fragment",
+		src: "
+#version 450
+layout(location = 0) in vec2 texc;
+layout(location = 0) out vec4 pixel;
+
+layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput g_depth;
+layout(input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput g_color;
+layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput g_normal;
+layout(input_attachment_index = 3, set = 0, binding = 3) uniform subpassInput g_position;
+layout(input_attachment_index = 4, set = 0, binding = 4) uniform subpassInput g_light;
 
 layout(push_constant) uniform PushConsts {
 	vec4 Resolution;
 	vec4 Projection;
 	vec4 CameraRotation;
 	vec3 CameraOffset;
+	vec4 LightPosition;
+	vec4 LightColor;
 } pc;
 
 vec3 quat_mul(vec4 quat, vec3 vec) {
@@ -164,70 +215,34 @@ vec3 inv_perspective(vec4 Projection, vec3 Position) {
 }
 
 void main() {
-	vec4 layer0 = subpassLoad(g_depth);
-	vec4 layer1 = subpassLoad(g_color);
-	vec4 layer2 = subpassLoad(g_normal);
-	vec4 layer3 = subpassLoad(g_position);
+	vec3 position = subpassLoad(g_position).xyz;
+	vec3 normal = subpassLoad(g_normal).xyz;
+	vec3 color = subpassLoad(g_color).rgb;
+	color *= color;
 
-	vec3 color = layer1.rgb * layer1.rgb;	
-	vec3 normal_ws = layer2.xyz;
-	vec3 position_ws = layer3.xyz;
-	
-	//vec3 position_ds = vec3(gl_FragCoord.xy * pc.Resolution.zw, layer0.x) * 2.0 - 1.0;
-	//vec3 position_es = inv_perspective(pc.Projection, position_ds);
-	//vec3 position_cs = vec3(position_es.x, -position_es.z, -position_es.y);
-	//vec3 position_ws = quat_mul(pc.CameraRotation.yzwx, position_cs) + pc.CameraOffset;
-	
-	vec3 dlight = vec3(0.0);
-	vec3 slight = vec3(0.0);
+	float metalness = 0.0;
+	float smoothness = 0.5;
 
-//	dlight += vec3(0.10, 0.09, 0.08) * max(0, dot(normal_ws.xyz, -normalize(vec3(1,2,3))));
-//	dlight += vec3(0.08, 0.09, 0.10) * max(0, dot(normal_ws.xyz, normalize(vec3(1.75,1.25,3))));
+	vec3 diffuseColor = color * (1.0 - metalness);
+	vec3 specularColor = mix(vec3(0.04), color, metalness);
+	float specularExponent = 128.0 * pow(2.0, 8.0 * smoothness - 4.0);
+	float specularNorm = specularExponent * 0.03978873577297383 + 0.2785211504108169;
 
-	float gridSize = 1.0;
-	bool grid = (mod(position_ws.x, gridSize) > gridSize*0.5);
-	if (mod(position_ws.y, gridSize) > gridSize*0.5) grid = !grid;
-	if (mod(position_ws.z, gridSize) > gridSize*0.5) grid = !grid;
-
-	vec3 specColor = vec3(0.04); // IRL everything except metal reflects about 4%
-	float specExponent = 64.0;
-	//if (grid) specExponent = 500.0;
-	float specNorm = specExponent * 0.03978873577297383 + 0.2785211504108169;
-	//float specNorm = (specExponent + 2) * (specExponent + 4) / ((8 * 3.14159) * (specExponent + 1.0 / pow(2.0, specExponent / 2.0))); // exact
-
-
-	float lightCutoff = 0.003035269835488375;
-	vec3 grayWeights = vec3(0.2126, 0.7152, 0.0722);
-
-	float lightRadius = 32.0;
-	//float lightRadius = sqrt(pow(dot(lightColor, grayWeights), 1.0/3.0) / lightCutoff);
-
-	vec3 lightColor = vec3(1.0, 0.75, 0.5625);
-	vec3 lightPos = vec3(23.0, 18.0, -12.0);
-	vec3 lightOffset = lightPos - position_ws;
-	float lightFalloff = min(1.0, length(lightOffset) / lightRadius);
+	float lightRadiusSquaredTimesCutoff = pc.LightColor.w;
+	float lightRadiusSquaredInverse = pc.LightPosition.w;
+	vec3 lightOffset = pc.LightPosition.xyz - position;
+	float lightDistanceSquared = dot(lightOffset, lightOffset);
+	float lightFalloff = min(1.0, lightDistanceSquared * lightRadiusSquaredInverse);
 	lightFalloff *= lightFalloff; lightFalloff *= lightFalloff;
-	lightFalloff = 1.0 - lightFalloff; lightFalloff = mix(lightFalloff * lightFalloff, lightFalloff, 0.3095);
-	lightFalloff *= max(0.0, dot(normal_ws, normalize(lightOffset))) / (1.0 + dot(lightOffset, lightOffset));
-	lightFalloff *= lightRadius * lightRadius * lightCutoff;
-	float lightSpecular = pow(max(0.0, dot(normalize(normalize(lightPos - position_ws) + normalize(pc.CameraOffset - position_ws)), normal_ws)), specExponent);
-	dlight += lightColor * lightFalloff;
-	slight += lightColor * lightFalloff * lightSpecular * specNorm * specColor;
-	
-	lightColor = vec3(0.5625, 0.75, 1.0);
-	lightPos = vec3(5.2, 21.8, -12.0);
-	lightOffset = lightPos - position_ws;
-	lightFalloff = min(1.0, length(lightOffset) / lightRadius);
-	lightFalloff *= lightFalloff; lightFalloff *= lightFalloff;
-	lightFalloff = 1.0 - lightFalloff; lightFalloff = mix(lightFalloff * lightFalloff, lightFalloff, 0.3095);
-	lightFalloff *= max(0.0, dot(normal_ws, normalize(lightOffset))) / (1.0 + dot(lightOffset, lightOffset));
-	lightFalloff *= lightRadius * lightRadius * lightCutoff;
-	lightSpecular = pow(max(0.0, dot(normalize(normalize(lightPos - position_ws) + normalize(pc.CameraOffset - position_ws)), normal_ws)), specExponent);
-	dlight += lightColor * lightFalloff;
-	slight += lightColor * lightFalloff * lightSpecular * specNorm * specColor;
-
-	pixel = vec4(color * dlight + slight, 0);
-	//pixel = vec4(normal_ws, 0);
+	lightFalloff = 1.0 - lightFalloff;
+	lightFalloff = mix(lightFalloff * lightFalloff, lightFalloff, 0.3095096836885878);
+	lightFalloff *= max(0.0, dot(normal, normalize(lightOffset))) / (1.0 + lightDistanceSquared);
+	lightFalloff *= lightRadiusSquaredTimesCutoff;
+	vec3 lightPower = pc.LightColor.rgb * lightFalloff;
+	float lightSpecular = pow(max(0.0, dot(normalize(normalize(pc.LightPosition.xyz - position) + normalize(pc.CameraOffset - position)), normal)), specularExponent) * specularNorm;
+	vec3 diffuse = lightPower * diffuseColor;
+	vec3 specular = lightPower * specularColor * lightSpecular;
+	pixel = vec4(diffuse + specular, 0);
 }
 "
 	}

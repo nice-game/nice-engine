@@ -1,6 +1,9 @@
 use super::{
-	geom_fshader, geom_vshader, pipeline::DeferredPipeline, swap_fshader, swap_vshader, Vert2D, DEPTH_FORMAT,
-	DIFFUSE_FORMAT, NORMAL_FORMAT, POSITION_FORMAT,
+	pipeline::DeferredPipeline, Vert2D,
+	DEPTH_FORMAT, DIFFUSE_FORMAT, NORMAL_FORMAT, POSITION_FORMAT, LIGHT_FORMAT,
+	geom_fshader, geom_vshader,
+	swap_fshader, swap_vshader,
+	light_fshader, light_vshader,
 };
 use crate::{
 	pipelines::{Pipeline, PipelineContext},
@@ -29,11 +32,13 @@ impl DeferredPipelineContext {
 					diffuse:	{ load: Clear,	store: DontCare,	format: DIFFUSE_FORMAT,		samples: 1, },
 					normal:		{ load: Clear,	store: DontCare,	format: NORMAL_FORMAT,		samples: 1, },
 					position:	{ load: Clear,	store: DontCare,	format: POSITION_FORMAT,	samples: 1, },
+					light:		{ load: Clear,	store: DontCare,	format: LIGHT_FORMAT,		samples: 1, },
 					color:		{ load: Clear,	store: Store,		format: SWAP_FORMAT,		samples: 1, }
 				},
 				passes: [
 					{ color: [diffuse, normal, position], depth_stencil: {depth}, input: [] },
-					{ color: [color], depth_stencil: {}, input: [depth, diffuse, normal, position] }
+					{ color: [light], depth_stencil: {}, input: [diffuse, normal, position] },
+					{ color: [color], depth_stencil: {}, input: [depth, light] }
 				]
 			)
 			.unwrap(),
@@ -51,6 +56,12 @@ impl DeferredPipelineContext {
 		let swap_fs_layout = swap_fshader::Layout(ShaderStages { fragment: true, ..ShaderStages::none() });
 		let swap_layout_desc = Arc::new(swap_vs_layout.union(swap_fs_layout).build(device.clone()).unwrap());
 
+		let light_vshader = light_vshader::Shader::load(device.clone()).unwrap();
+		let light_fshader = light_fshader::Shader::load(device.clone()).unwrap();
+		let light_vs_layout = light_vshader::Layout(ShaderStages { vertex: true, ..ShaderStages::none() });
+		let light_fs_layout = light_fshader::Layout(ShaderStages { fragment: true, ..ShaderStages::none() });
+		let light_layout_desc = Arc::new(light_vs_layout.union(light_fs_layout).build(device.clone()).unwrap());
+
 		let vertdata = [
 			Vert2D { pos: [-1.0, 1.0], texc: [0.0, 0.0] },
 			Vert2D { pos: [1.0, 1.0], texc: [1.0, 0.0] },
@@ -67,12 +78,9 @@ impl DeferredPipelineContext {
 			Self {
 				inner: Arc::new(DeferredPipelineContextInner {
 					render_pass,
-					geom_vshader,
-					geom_fshader,
-					layout_desc,
-					swap_vshader,
-					swap_fshader,
-					swap_layout_desc,
+					geom_vshader, geom_fshader, layout_desc,
+					swap_vshader, swap_fshader, swap_layout_desc,
+					light_vshader, light_fshader, light_layout_desc,
 					vertices,
 					indices,
 				}),
@@ -100,9 +108,15 @@ pub(super) struct DeferredPipelineContextInner {
 	pub(super) geom_vshader: geom_vshader::Shader,
 	pub(super) geom_fshader: geom_fshader::Shader,
 	pub(super) layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
+
 	pub(super) swap_vshader: swap_vshader::Shader,
 	pub(super) swap_fshader: swap_fshader::Shader,
 	pub(super) swap_layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
+
+	pub(super) light_vshader: light_vshader::Shader,
+	pub(super) light_fshader: light_fshader::Shader,
+	pub(super) light_layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
+
 	pub(super) vertices: Arc<dyn BufferAccess + Send + Sync>,
 	pub(super) indices: Arc<dyn TypedBufferAccess<Content = [u32]> + Send + Sync>,
 }

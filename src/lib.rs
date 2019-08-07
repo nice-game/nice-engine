@@ -9,6 +9,7 @@ pub mod transform;
 pub mod direct_light;
 #[cfg(feature = "window")]
 pub mod window;
+mod threads;
 
 use crate::{
 	pipelines::{deferred::DeferredPipelineDef, forward::ForwardPipelineDef, PipelineContext, PipelineDef},

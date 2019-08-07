@@ -91,6 +91,7 @@ pub fn main() {
 			break;
 		}
 
+		map.refresh();
 		win.surface().draw(&cam, &[&map], &[&light1, &light2]);
 	}
 }
