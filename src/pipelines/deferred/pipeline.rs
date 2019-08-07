@@ -68,8 +68,8 @@ impl Pipeline for DeferredPipeline {
 						self.geom_pipeline.clone(),
 						&Default::default(),
 						vec![mesh_data.vertices().clone()],
-						mesh_data.indices().clone().into_buffer_slice().slice(mat.range.clone()).unwrap(),
-						mat.tex1.clone(),
+						mesh_data.indices().clone().into_buffer_slice().slice(mat.range().clone()).unwrap(),
+						mat.tex1().clone(),
 						make_pc(mesh),
 					)
 					.unwrap();

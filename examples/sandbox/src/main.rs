@@ -1,6 +1,6 @@
 use cgmath::{prelude::*, vec3, Deg, Quaternion};
 use nice_engine::{camera::Camera, window::Window, Context};
-use simplelog::{ LevelFilter, SimpleLogger };
+use simplelog::{LevelFilter, SimpleLogger};
 use vulkano::sync::GpuFuture;
 use winit::{dpi::LogicalSize, Event, EventsLoop, VirtualKeyCode, WindowEvent};
 
@@ -81,6 +81,7 @@ pub fn main() {
 			break;
 		}
 
+		map.refresh();
 		win.surface().draw(&cam, &[&map]);
 	}
 }
