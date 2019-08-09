@@ -1,4 +1,5 @@
 pub mod camera;
+pub mod direct_light;
 pub mod mesh;
 pub mod mesh_data;
 pub mod pipelines;
@@ -7,7 +8,6 @@ pub mod surface;
 pub mod texture;
 mod threads;
 pub mod transform;
-pub mod direct_light;
 #[cfg(feature = "window")]
 pub mod window;
 pub mod world;
@@ -20,7 +20,7 @@ use log::info;
 use std::sync::{Arc, Mutex};
 use vulkano::{
 	device::{Device, DeviceExtensions, Features, Queue},
-	instance::{ApplicationInfo, Instance, InstanceExtensions, PhysicalDevice},
+	instance::{debug::DebugCallback, ApplicationInfo, Instance, InstanceExtensions, PhysicalDevice},
 };
 pub use vulkano::{
 	instance::{InstanceCreationError, Version},
@@ -31,6 +31,8 @@ use world::World;
 /// Root struct for this library. Any windows that are created using the same context will share some resources.
 pub struct Context {
 	instance: Arc<Instance>,
+	#[allow(dead_code)]
+	debug_callback: DebugCallback,
 	device: Arc<Device>,
 	queue: Arc<Queue>,
 	pipeline_ctxs: Vec<Box<dyn PipelineContext>>,
@@ -63,6 +65,7 @@ impl Context {
 			khr_win32_surface: true,
 			mvk_ios_surface: true,
 			mvk_macos_surface: true,
+			ext_debug_report: true,
 			..InstanceExtensions::none()
 		};
 
@@ -71,7 +74,16 @@ impl Context {
 			Err(_) => InstanceExtensions::none(),
 		};
 
-		let instance = Instance::new(Some(&app_info), &exts, None)?;
+		let instance = Instance::new(Some(&app_info), &exts, vec!["VK_LAYER_KHRONOS_validation"])?;
+
+		let debug_callback = DebugCallback::errors_and_warnings(&instance, |msg| {
+			if msg.ty.error {
+				log::error!("[{}]{}", msg.layer_prefix, msg.description);
+			} else {
+				log::warn!("[{}]{}", msg.layer_prefix, msg.description);
+			}
+		})
+		.unwrap();
 
 		let features = Features { sampler_anisotropy: true, ..Features::none() };
 		let pdevice = PhysicalDevice::enumerate(&instance)
@@ -102,7 +114,16 @@ impl Context {
 		let resources = Mutex::new(resources);
 
 		Ok((
-			Arc::new(Self { instance, device, queue, pipeline_ctxs, active_pipeline, world, resources }),
+			Arc::new(Self {
+				instance,
+				debug_callback,
+				device,
+				queue,
+				pipeline_ctxs,
+				active_pipeline,
+				world,
+				resources,
+			}),
 			deferred_def_future.join(forward_def_future).join(resources_future),
 		))
 	}
