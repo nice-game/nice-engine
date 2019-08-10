@@ -1,14 +1,31 @@
+mod mipmaps_command_buffer;
+
+use self::mipmaps_command_buffer::MipmapsCommandBuffer;
 use super::Texture;
 use crate::Context;
-use std::sync::Arc;
+use std::{
+	iter,
+	sync::{Arc, Mutex},
+};
 use vulkano::{
 	buffer::{BufferAccess, BufferUsage, CpuAccessibleBuffer, TypedBufferAccess},
-	command_buffer::{AutoCommandBufferBuilder, CommandBuffer},
-	device::Queue,
+	command_buffer::{
+		pool::standard::StandardCommandPoolAlloc,
+		sys::{
+			Flags, Kind, UnsafeCommandBuffer, UnsafeCommandBufferBuilder, UnsafeCommandBufferBuilderBufferImageCopy,
+			UnsafeCommandBufferBuilderImageAspect, UnsafeCommandBufferBuilderImageBlit,
+			UnsafeCommandBufferBuilderPipelineBarrier,
+		},
+		CommandBuffer, CommandBufferExecFuture,
+	},
+	device::{Device, Queue},
 	format::{AcceptsPixels, Format, FormatDesc},
-	image::{Dimensions, ImageCreationError, ImageLayout, ImageUsage, ImageViewAccess, ImmutableImage, MipmapsCount},
+	image::{
+		Dimensions, ImageAccess, ImageCreationError, ImageLayout, ImageUsage, ImageViewAccess, ImmutableImage,
+		MipmapsCount,
+	},
 	sampler::Filter,
-	sync::GpuFuture,
+	sync::{self, AccessFlagBits, GpuFuture, PipelineStages},
 };
 
 #[derive(Clone)]
@@ -40,13 +57,12 @@ impl ImmutableTexture {
 		format: F,
 	) -> Result<(Self, impl GpuFuture), ImageCreationError>
 	where
-		F: FormatDesc + AcceptsPixels<P> + 'static + Send + Sync,
-		B: BufferAccess + TypedBufferAccess<Content = [P]> + 'static + Clone + Send + Sync,
+		F: FormatDesc + AcceptsPixels<P> + Send + Sync + 'static,
+		B: BufferAccess + TypedBufferAccess<Content = [P]> + Clone + Send + Sync + 'static,
 		P: Send + Sync + Clone + 'static,
 		Format: AcceptsPixels<P>,
 	{
 		let device = queue.device();
-		let family = queue.family();
 
 		let dimensions = Dimensions::Dim2d { width: dimensions[0], height: dimensions[1] };
 
@@ -58,56 +74,9 @@ impl ImmutableTexture {
 			ImageUsage { transfer_destination: true, transfer_source: true, sampled: true, ..ImageUsage::none() },
 			ImageLayout::ShaderReadOnlyOptimal,
 			device.active_queue_families(),
-		)
-		.unwrap();
+		)?;
 
-		let mut cmds = AutoCommandBufferBuilder::new(device.clone(), family).unwrap();
-		cmds = cmds
-			.copy_buffer_to_image_dimensions(
-				buffer,
-				init,
-				[0, 0, 0],
-				dimensions.width_height_depth(),
-				0,
-				dimensions.array_layers_with_cube(),
-				0,
-			)
-			.unwrap();
-
-		let image_dimensions = dimensions.to_image_dimensions();
-
-		let mut last_mip_dimensions = image_dimensions;
-		for mip in 1..image.mipmap_levels() {
-			let mip_dimensions = image_dimensions.mipmap_dimensions(mip).unwrap();
-
-			let source_bottom_right = [
-				last_mip_dimensions.width() as i32,
-				last_mip_dimensions.height() as i32,
-				last_mip_dimensions.depth() as i32,
-			];
-			let destination_bottom_right =
-				[mip_dimensions.width() as i32, mip_dimensions.height() as i32, mip_dimensions.depth() as i32];
-
-			cmds = cmds
-				.blit_image(
-					image.clone(),
-					[0; 3],
-					source_bottom_right,
-					0,
-					mip - 1,
-					image.clone(),
-					[0; 3],
-					destination_bottom_right,
-					0,
-					mip,
-					1,
-					Filter::Linear,
-				)
-				.unwrap();
-
-			last_mip_dimensions = mip_dimensions;
-		}
-		let future = cmds.build().unwrap().execute(queue).unwrap();
+		let future = MipmapsCommandBuffer::new(device.clone(), queue.family(), buffer, init).execute(queue).unwrap();
 
 		Ok((Self { image }, future))
 	}
