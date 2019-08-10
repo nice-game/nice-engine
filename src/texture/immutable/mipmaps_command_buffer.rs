@@ -1,14 +1,12 @@
-use super::Texture;
-use crate::Context;
 use std::{
 	iter,
 	sync::{
 		atomic::{AtomicBool, Ordering},
-		Arc, Mutex,
+		Arc,
 	},
 };
 use vulkano::{
-	buffer::{BufferAccess, BufferUsage, CpuAccessibleBuffer, TypedBufferAccess},
+	buffer::{BufferAccess, TypedBufferAccess},
 	command_buffer::{
 		pool::standard::StandardCommandPoolAlloc,
 		sys::{
@@ -16,17 +14,14 @@ use vulkano::{
 			UnsafeCommandBufferBuilderImageAspect, UnsafeCommandBufferBuilderImageBlit,
 			UnsafeCommandBufferBuilderPipelineBarrier,
 		},
-		CommandBuffer, CommandBufferExecError, CommandBufferExecFuture,
+		CommandBuffer, CommandBufferExecError,
 	},
 	device::{Device, DeviceOwned, Queue},
-	format::{AcceptsPixels, Format, FormatDesc},
-	image::{
-		immutable::ImmutableImageInitialization, Dimensions, ImageAccess, ImageCreationError, ImageLayout, ImageUsage,
-		ImageViewAccess, ImmutableImage, MipmapsCount,
-	},
+	format::FormatDesc,
+	image::{immutable::ImmutableImageInitialization, ImageAccess, ImageLayout},
 	instance::QueueFamily,
 	sampler::Filter,
-	sync::{self, AccessCheckError, AccessError, AccessFlagBits, GpuFuture, PipelineStages},
+	sync::{AccessCheckError, AccessError, AccessFlagBits, GpuFuture, PipelineStages},
 };
 
 pub(crate) struct MipmapsCommandBuffer<B, P, F>

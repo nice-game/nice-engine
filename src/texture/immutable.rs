@@ -3,29 +3,14 @@ mod mipmaps_command_buffer;
 use self::mipmaps_command_buffer::MipmapsCommandBuffer;
 use super::Texture;
 use crate::Context;
-use std::{
-	iter,
-	sync::{Arc, Mutex},
-};
+use std::sync::Arc;
 use vulkano::{
 	buffer::{BufferAccess, BufferUsage, CpuAccessibleBuffer, TypedBufferAccess},
-	command_buffer::{
-		pool::standard::StandardCommandPoolAlloc,
-		sys::{
-			Flags, Kind, UnsafeCommandBuffer, UnsafeCommandBufferBuilder, UnsafeCommandBufferBuilderBufferImageCopy,
-			UnsafeCommandBufferBuilderImageAspect, UnsafeCommandBufferBuilderImageBlit,
-			UnsafeCommandBufferBuilderPipelineBarrier,
-		},
-		CommandBuffer, CommandBufferExecFuture,
-	},
-	device::{Device, Queue},
+	command_buffer::CommandBuffer,
+	device::Queue,
 	format::{AcceptsPixels, Format, FormatDesc},
-	image::{
-		Dimensions, ImageAccess, ImageCreationError, ImageLayout, ImageUsage, ImageViewAccess, ImmutableImage,
-		MipmapsCount,
-	},
-	sampler::Filter,
-	sync::{self, AccessFlagBits, GpuFuture, PipelineStages},
+	image::{Dimensions, ImageCreationError, ImageLayout, ImageUsage, ImageViewAccess, ImmutableImage, MipmapsCount},
+	sync::GpuFuture,
 };
 
 #[derive(Clone)]
