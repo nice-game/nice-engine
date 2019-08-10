@@ -56,7 +56,7 @@ where
 		unsafe {
 			barrier.add_image_memory_barrier(
 				&init,
-				0..1,
+				0..init.mipmap_levels(),
 				0..1,
 				PipelineStages { bottom_of_pipe: true, ..PipelineStages::none() },
 				AccessFlagBits::none(),
