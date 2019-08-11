@@ -262,6 +262,8 @@ where
 
 	#[inline]
 	unsafe fn unlock(&self) {
+		self.buffer.unlock();
+		self.init.unlock(Some(ImageLayout::ShaderReadOnlyOptimal));
 		debug_assert!(self.already_submitted.load(Ordering::SeqCst));
 	}
 
