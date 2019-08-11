@@ -4,8 +4,7 @@ use simplelog::{LevelFilter, SimpleLogger};
 use std::{collections::HashSet, time::Instant};
 use vulkano::sync::GpuFuture;
 use winit::{
-	dpi::LogicalSize, DeviceEvent, ElementState, Event, EventsLoop, KeyboardInput, MouseCursor, VirtualKeyCode,
-	WindowEvent,
+	dpi::LogicalSize, DeviceEvent, ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, WindowEvent,
 };
 
 pub fn main() {
