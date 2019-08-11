@@ -7,7 +7,7 @@ use vulkano::{
 		acquire_next_image, AcquireError, PresentMode, Surface as VkSurface, SurfaceCreationError, SurfaceTransform,
 		Swapchain, SwapchainCreationError,
 	},
-	sync::{self, GpuFuture},
+	sync::{FenceSignalFuture, GpuFuture},
 };
 
 pub const SWAP_FORMAT: Format = Format::B8G8R8A8Srgb;
@@ -18,7 +18,7 @@ pub struct Surface<W: Send + Sync + 'static = ()> {
 	surface: Arc<VkSurface<W>>,
 	swapchain: Arc<Swapchain<W>>,
 	pipeline: Box<dyn Pipeline>,
-	prev_frame_end: Option<Box<dyn GpuFuture>>,
+	prev_frame_end: Option<FenceSignalFuture<Box<dyn GpuFuture>>>,
 	world: Arc<World>,
 }
 impl<W: Send + Sync + 'static> Surface<W> {
@@ -31,13 +31,9 @@ impl<W: Send + Sync + 'static> Surface<W> {
 	}
 
 	pub fn draw(&mut self, cam: &Camera) {
-		let mut prev_frame_end = self.prev_frame_end.take().unwrap();
-		prev_frame_end.cleanup_finished();
-
 		let (image_num, acquire_future) = match acquire_next_image(self.swapchain.clone(), None) {
 			Ok(r) => r,
 			Err(AcquireError::OutOfDate) => {
-				self.prev_frame_end = Some(Box::new(sync::now(self.device.clone())) as Box<_>);
 				return;
 			},
 			Err(err) => panic!("{:?}", err),
@@ -50,22 +46,27 @@ impl<W: Send + Sync + 'static> Surface<W> {
 
 		let lights = self.world.lights().lock().unwrap();
 
-		let future = prev_frame_end
-			.join(acquire_future)
-			.then_execute(
-				self.queue.clone(),
-				self.pipeline.draw(image_num, self.queue.family(), cam, &*meshes, &*lights),
-			)
-			.unwrap()
-			.then_swapchain_present(self.queue.clone(), self.swapchain.clone(), image_num)
+		if let Some(prev_frame_end) = &mut self.prev_frame_end {
+			prev_frame_end.wait(None).unwrap();
+			prev_frame_end.cleanup_finished();
+		}
+		let future = (Box::new(
+			acquire_future
+				.then_execute(
+					self.queue.clone(),
+					self.pipeline.draw(image_num, self.queue.family(), cam, &*meshes, &*lights),
+				)
+				.unwrap()
+				.then_swapchain_present(self.queue.clone(), self.swapchain.clone(), image_num),
+		) as Box<dyn GpuFuture>)
 			.then_signal_fence_and_flush();
-		self.prev_frame_end = Some(match future {
-			Ok(future) => Box::new(future) as Box<_>,
+		self.prev_frame_end = match future {
+			Ok(future) => Some(future),
 			Err(e) => {
 				println!("{:?}", e);
-				Box::new(sync::now(self.device.clone())) as Box<_>
+				None
 			},
-		});
+		};
 	}
 
 	pub fn resize(&mut self, width: u32, height: u32) {
@@ -122,7 +123,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		.expect("failed to create swapchain");
 
 		let pipeline = ctx.pipeline_ctx().make_pipeline(images.into_iter().map(|i| i as _).collect(), dimensions);
-		let prev_frame_end = Some(Box::new(sync::now(device.clone())) as Box<dyn GpuFuture>);
+		let prev_frame_end = None;
 
 		let world = ctx.world().clone();
 
