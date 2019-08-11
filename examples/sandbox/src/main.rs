@@ -18,9 +18,9 @@ pub fn main() {
 	map.transform_mut().rot = Quaternion::from_angle_x(Deg(90.0));
 	ctx.world().add_mesh(map);
 
-	//let mut gun = ctx.resources().lock().unwrap().get_model("assets/p250/p250.nmd");
-	//gun.transform_mut().pos = vec3(22.981121, 20.031065, -13.0);
-	//ctx.world().add_mesh(gun);
+	// let mut gun = ctx.resources().lock().unwrap().get_model("assets/p250/p250.nmd");
+	// gun.transform_mut().pos = vec3(22.981121, 20.031065, -13.0);
+	// ctx.world().add_mesh(gun);
 
 	let mut cam = Camera::new();
 	cam.transform_mut().pos = vec3(17.0, 36.5, -12.0);
@@ -41,8 +41,6 @@ pub fn main() {
 	ctx.world().add_light(light2);
 
 	ctx_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
-	
-	let move_speed = 0.5;
 
 	let mut focused = true;
 	let mut keys = HashSet::new();

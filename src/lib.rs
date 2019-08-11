@@ -83,7 +83,9 @@ impl Context {
 
 		let layers = hashset! {
 			#[cfg(debug_assertions)]
-			"VK_LAYER_KHRONOS_validation".to_owned()
+			"VK_LAYER_KHRONOS_validation".to_owned(),
+			#[cfg(debug_assertions)]
+			"VK_LAYER_LUNARG_monitor".to_owned(),
 		};
 		let instance_layers =
 			instance::layers_list().unwrap().map(|l| l.name().to_owned()).collect::<HashSet<String>>();

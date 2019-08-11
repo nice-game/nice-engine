@@ -18,7 +18,7 @@ pub struct Surface<W: Send + Sync + 'static = ()> {
 	surface: Arc<VkSurface<W>>,
 	swapchain: Arc<Swapchain<W>>,
 	pipeline: Box<dyn Pipeline>,
-	prev_frame_end: Option<FenceSignalFuture<Box<dyn GpuFuture>>>,
+	prev_frame_end: Option<Arc<FenceSignalFuture<Box<dyn GpuFuture>>>>,
 	world: Arc<World>,
 }
 impl<W: Send + Sync + 'static> Surface<W> {
@@ -46,12 +46,13 @@ impl<W: Send + Sync + 'static> Surface<W> {
 
 		let lights = self.world.lights().lock().unwrap();
 
-		if let Some(prev_frame_end) = &mut self.prev_frame_end {
-			prev_frame_end.wait(None).unwrap();
-			prev_frame_end.cleanup_finished();
-		}
+		let before_execute: Box<dyn GpuFuture> = if let Some(prev_frame_end) = &mut self.prev_frame_end {
+			Box::new(acquire_future.join(prev_frame_end.clone()))
+		} else {
+			Box::new(acquire_future)
+		};
 		let future = (Box::new(
-			acquire_future
+			before_execute
 				.then_execute(
 					self.queue.clone(),
 					self.pipeline.draw(image_num, self.queue.family(), cam, &*meshes, &*lights),
@@ -60,8 +61,12 @@ impl<W: Send + Sync + 'static> Surface<W> {
 				.then_swapchain_present(self.queue.clone(), self.swapchain.clone(), image_num),
 		) as Box<dyn GpuFuture>)
 			.then_signal_fence_and_flush();
+		if let Some(prev_frame_end) = &mut self.prev_frame_end {
+			prev_frame_end.wait(None).unwrap();
+			prev_frame_end.cleanup_finished();
+		}
 		self.prev_frame_end = match future {
-			Ok(future) => Some(future),
+			Ok(future) => Some(Arc::new(future)),
 			Err(e) => {
 				println!("{:?}", e);
 				None
