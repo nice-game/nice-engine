@@ -75,12 +75,8 @@ impl<W: Send + Sync + 'static> Surface<W> {
 	}
 
 	pub fn resize(&mut self, width: u32, height: u32) {
-		let dimensions = self
-			.surface
-			.capabilities(self.device.physical_device())
-			.expect("failed to get surface capabilities")
-			.current_extent
-			.unwrap_or([width, height]);
+		let dimensions =
+			self.surface.capabilities(self.device.physical_device()).unwrap().current_extent.unwrap_or([width, height]);
 
 		match self.swapchain.recreate_with_dimension(dimensions) {
 			Ok((swapchain, images)) => {
@@ -106,9 +102,19 @@ impl<W: Send + Sync + 'static> Surface<W> {
 	fn new_inner(ctx: &Arc<Context>, surface: Arc<VkSurface<W>>) -> Self {
 		let device = ctx.device().clone();
 		let queue = ctx.queue().clone();
-		let caps = surface.capabilities(device.physical_device()).expect("failed to get surface capabilities");
+		let caps = surface.capabilities(device.physical_device()).unwrap();
 
 		let dimensions = caps.current_extent.unwrap();
+
+		let mode = if caps.present_modes.mailbox {
+			PresentMode::Mailbox
+		} else if caps.present_modes.immediate {
+			PresentMode::Immediate
+		} else if caps.present_modes.relaxed {
+			PresentMode::Relaxed
+		} else {
+			PresentMode::Fifo
+		};
 
 		let (swapchain, images) = Swapchain::new(
 			device.clone(),
@@ -121,7 +127,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 			&queue,
 			SurfaceTransform::Identity,
 			caps.supported_composite_alpha.iter().next().unwrap(),
-			PresentMode::Fifo,
+			mode,
 			true,
 			None,
 		)

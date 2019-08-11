@@ -12,6 +12,7 @@ impl Window {
 	pub fn new(ctx: &Arc<Context>, events: &EventsLoop) -> Result<Self, CreationError> {
 		let vk_surface = WindowBuilder::new()
 			.with_fullscreen(Some(events.get_primary_monitor()))
+			// .with_dimensions((1920, 1080).into())
 			.with_title("nIce Engine")
 			.build_vk_surface(events, ctx.instance.clone())?;
 		let surface = Surface::from_vk(ctx, vk_surface);

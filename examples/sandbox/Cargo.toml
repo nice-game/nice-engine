@@ -10,3 +10,6 @@ nice-engine = { path = "../.." }
 simplelog = "0.5"
 vulkano = { git = "https://github.com/IcyDefiance/vulkano.git" }
 winit = "0.19.1"
+
+[profile.release]
+lto = true

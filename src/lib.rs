@@ -22,9 +22,11 @@ use std::{
 	collections::HashSet,
 	sync::{Arc, Mutex},
 };
+#[cfg(debug_assertions)]
+use vulkano::instance::debug::DebugCallback;
 use vulkano::{
 	device::{Device, DeviceExtensions, Features, Queue},
-	instance::{self, debug::DebugCallback, ApplicationInfo, Instance, InstanceExtensions, PhysicalDevice},
+	instance::{self, ApplicationInfo, Instance, InstanceExtensions, PhysicalDevice},
 };
 pub use vulkano::{
 	instance::{InstanceCreationError, Version},
@@ -81,12 +83,16 @@ impl Context {
 			Err(_) => InstanceExtensions::none(),
 		};
 
+		#[cfg(debug_assertions)]
 		let layers = hashset! {
-			#[cfg(debug_assertions)]
 			"VK_LAYER_KHRONOS_validation".to_owned(),
-			#[cfg(debug_assertions)]
 			"VK_LAYER_LUNARG_monitor".to_owned(),
 		};
+		#[cfg(not(debug_assertions))]
+		let layers = hashset! {
+			"VK_LAYER_LUNARG_monitor".to_owned(),
+		};
+
 		let instance_layers =
 			instance::layers_list().unwrap().map(|l| l.name().to_owned()).collect::<HashSet<String>>();
 		let layers = instance_layers.intersection(&layers).map(|s| s as &str);
