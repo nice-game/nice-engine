@@ -111,6 +111,7 @@ fn load_tex(queue: Arc<Queue>, res: Arc<TextureResource>, path: impl AsRef<Path>
 			let (tex, tex_future) = texture::from_nice_texture(&queue, path);
 			tex_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 			res.tex.set_if_none(Arc::new(tex));
+			log::debug!("loaded image");
 		}))
 		.unwrap();
 }
