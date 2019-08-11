@@ -62,7 +62,7 @@ pub fn main() {
 					},
 					None => (),
 				},
-				DeviceEvent::MouseMotion { delta } => rotation = vec2(delta.0 as f32, delta.1 as f32),
+				DeviceEvent::MouseMotion { delta } => rotation += vec2(delta.0 as f32, delta.1 as f32),
 				_ => (),
 			},
 			Event::WindowEvent { event, .. } => match event {
@@ -105,8 +105,8 @@ pub fn main() {
 					- keys.contains(&VirtualKeyCode::LShift) as u32 as f32,
 			) * dtime * speed;
 
-			let mouse_sensitivity = 60.0;
-			rotation *= dtime * mouse_sensitivity;
+			let mouse_sensitivity = 0.2;
+			rotation *= mouse_sensitivity;
 
 			let t = cam.transform_mut();
 			t.rot = Quaternion::from_angle_z(Deg(-rotation.x as f32))
