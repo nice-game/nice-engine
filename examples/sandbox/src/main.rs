@@ -18,24 +18,31 @@ pub fn main() {
 	map.transform_mut().rot = Quaternion::from_angle_x(Deg(90.0));
 	ctx.world().add_mesh(map);
 
+	//let mut gun = ctx.resources().lock().unwrap().get_model("assets/p250/p250.nmd");
+	//gun.transform_mut().pos = vec3(22.981121, 20.031065, -13.0);
+	//ctx.world().add_mesh(gun);
+
 	let mut cam = Camera::new();
 	cam.transform_mut().pos = vec3(17.0, 36.5, -12.0);
 	cam.transform_mut().rot = Quaternion::from_angle_z(Deg(180.0));
 	cam.set_perspective(16.0 / 9.0, 90.0, 1.0, 1000.0);
+	cam.exposure = 1.0;
 
 	let mut light1 = DirectLight::new();
 	light1.position = vec3(23.0, 18.0, -12.0);
 	light1.color = vec3(1.0, 0.75, 0.5625);
-	light1.radius = 32.0;
+	light1.radius = 24.0;
 	ctx.world().add_light(light1);
 
 	let mut light2 = DirectLight::new();
 	light2.position = vec3(5.2, 21.8, -12.0);
 	light2.color = vec3(0.5625, 0.75, 1.0);
-	light2.radius = 32.0;
+	light2.radius = 24.0;
 	ctx.world().add_light(light2);
 
 	ctx_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
+	
+	let move_speed = 0.5;
 
 	let mut focused = true;
 	let mut keys = HashSet::new();

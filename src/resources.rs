@@ -49,7 +49,7 @@ impl Resources {
 			0.0,
 			if device.enabled_features().sampler_anisotropy { 16.0 } else { 1.0 },
 			0.0,
-			0.0,
+			1337.0,
 		)
 		.unwrap();
 

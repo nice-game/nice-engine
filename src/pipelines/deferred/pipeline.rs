@@ -25,8 +25,7 @@ pub(super) struct DeferredPipeline {
 	light_pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
 	swap_pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
 	framebuffers: Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
-	gbuffers_desc_light: Arc<dyn DescriptorSet + Send + Sync>,
-	gbuffers_desc_swap: Arc<dyn DescriptorSet + Send + Sync>,
+	gbuffers_desc: Arc<dyn DescriptorSet + Send + Sync>,
 	dimensions: [u32; 2],
 }
 impl DeferredPipeline {
@@ -44,10 +43,9 @@ impl DeferredPipeline {
 
 		let gbuffers = create_gbuffers(ctx.render_pass.device(), dimensions);
 		let framebuffers = create_framebuffers(&ctx.render_pass, &gbuffers, images);
-		let gbuffers_desc_light = make_gbuffers_desc_set_light(ctx.light_layout_desc.clone(), &gbuffers);
-		let gbuffers_desc_swap = make_gbuffers_desc_set_swap(ctx.swap_layout_desc.clone(), &gbuffers);
+		let gbuffers_desc = make_gbuffers_desc(ctx.light_layout_desc.clone(), &gbuffers);
 
-		Self { ctx, geom_pipeline, swap_pipeline, light_pipeline, framebuffers, gbuffers_desc_light, gbuffers_desc_swap, dimensions }
+		Self { ctx, geom_pipeline, swap_pipeline, light_pipeline, framebuffers, gbuffers_desc, dimensions }
 	}
 }
 impl Pipeline for DeferredPipeline {
@@ -96,7 +94,7 @@ impl Pipeline for DeferredPipeline {
 					&Default::default(),
 					vec![self.ctx.vertices.clone()],
 					self.ctx.indices.clone(),
-					self.gbuffers_desc_light.clone(),
+					self.gbuffers_desc.clone(),
 					light_fshader::ty::PushConsts {
 						Resolution: [
 							self.dimensions[0] as f32,
@@ -121,9 +119,9 @@ impl Pipeline for DeferredPipeline {
 				&Default::default(),
 				vec![self.ctx.vertices.clone()],
 				self.ctx.indices.clone(),
-				self.gbuffers_desc_swap.clone(),
+				self.gbuffers_desc.clone(),
 				swap_fshader::ty::PushConsts {
-					Exposure: 1.0,
+					Exposure: cam.exposure,
 				},
 			).unwrap();
 
@@ -155,8 +153,7 @@ impl Pipeline for DeferredPipeline {
 
 		let gbuffers = create_gbuffers(self.ctx.render_pass.device(), dimensions);
 		self.framebuffers = create_framebuffers(&self.ctx.render_pass, &gbuffers, images);
-		self.gbuffers_desc_light = make_gbuffers_desc_set_light(self.ctx.swap_layout_desc.clone(), &gbuffers);
-		self.gbuffers_desc_swap = make_gbuffers_desc_set_swap(self.ctx.swap_layout_desc.clone(), &gbuffers);
+		self.gbuffers_desc = make_gbuffers_desc(self.ctx.swap_layout_desc.clone(), &gbuffers);
 	}
 }
 
@@ -283,22 +280,7 @@ fn create_light_pipeline(
 	)
 }
 
-fn make_gbuffers_desc_set_light<L>(layout: L, gbuffers: &GBuffers) -> Arc<dyn DescriptorSet + Send + Sync>
-where
-	L: PipelineLayoutAbstract + Send + Sync + 'static,
-{
-	Arc::new(
-		PersistentDescriptorSet::start(layout, 0)
-			.add_image(gbuffers.depth.clone()).unwrap()
-			.add_image(gbuffers.diffuse.clone()).unwrap()
-			.add_image(gbuffers.normal.clone()).unwrap()
-			.add_image(gbuffers.position.clone()).unwrap()
-			.add_image(gbuffers.light.clone()).unwrap()
-			.build().unwrap(),
-	)
-}
-
-fn make_gbuffers_desc_set_swap<L>(layout: L, gbuffers: &GBuffers) -> Arc<dyn DescriptorSet + Send + Sync>
+fn make_gbuffers_desc<L>(layout: L, gbuffers: &GBuffers) -> Arc<dyn DescriptorSet + Send + Sync>
 where
 	L: PipelineLayoutAbstract + Send + Sync + 'static,
 {

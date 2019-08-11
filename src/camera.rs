@@ -5,10 +5,11 @@ use std::f32::consts::PI;
 pub struct Camera {
 	proj: Vector4<f32>,
 	transform: Transform,
+	pub exposure: f32,
 }
 impl Camera {
 	pub fn new() -> Self {
-		Camera { proj: Vector4::zero(), transform: Transform::default() }
+		Camera { proj: Vector4::zero(), transform: Transform::default(), exposure: 1.0 }
 	}
 
 	pub fn set_perspective(&mut self, aspect: f32, fovx: f32, znear: f32, zfar: f32) {
