@@ -12,7 +12,7 @@ use vulkano::{
 
 const DEPTH_FORMAT: Format = Format::D16Unorm;
 
-pub struct ForwardPipelineDef;
+pub(crate) struct ForwardPipelineDef;
 impl PipelineDef for ForwardPipelineDef {
 	fn make_context(device: &Arc<Device>, _queue: &Arc<Queue>) -> (Box<dyn PipelineContext>, Box<dyn GpuFuture>) {
 		(Box::new(ForwardPipelineContext::new(device)), Box::new(sync::now(device.clone())))

@@ -1,15 +1,18 @@
-use byteorder::LE;
-use vulkano::buffer::CpuAccessibleBuffer;
-use std::path::Path;
-use std::sync::Arc;
 use crate::texture::ImmutableTexture;
-use vulkano::{buffer::BufferUsage, device::Queue, format::Format, sync::GpuFuture};
-use std::fs::File;
-use std::io::prelude::*;
-use byteorder::ReadBytesExt;
+use byteorder::{ReadBytesExt, LE};
 use log::debug;
+use std::{fs::File, io::prelude::*, path::Path, sync::Arc};
+use vulkano::{
+	buffer::{BufferUsage, CpuAccessibleBuffer},
+	device::Queue,
+	format::Format,
+	sync::GpuFuture,
+};
 
-pub(crate) fn from_nice_texture(queue: &Arc<Queue>, path: impl AsRef<Path> + Clone + Send,) -> (ImmutableTexture, impl GpuFuture) {
+pub(crate) fn from_nice_texture(
+	queue: &Arc<Queue>,
+	path: impl AsRef<Path> + Clone + Send,
+) -> (ImmutableTexture, impl GpuFuture) {
 	let mut fp = File::open(path).unwrap();
 
 	let mut magic_number = [0; 3];
@@ -43,7 +46,8 @@ pub(crate) fn from_nice_texture(queue: &Arc<Queue>, path: impl AsRef<Path> + Clo
 		fp.read_exact(&mut pixels).unwrap();
 	};
 
-	let (tex, tex_future) = ImmutableTexture::from_buffer(queue.clone(), pixbuf, [width as u32, height as u32], fmt).unwrap();
+	let (tex, tex_future) =
+		ImmutableTexture::from_buffer(queue.clone(), pixbuf, [width as u32, height as u32], fmt).unwrap();
 
 	(tex, Box::new(tex_future))
 }

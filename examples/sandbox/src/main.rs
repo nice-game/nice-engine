@@ -1,8 +1,7 @@
 use cgmath::{prelude::*, vec2, vec3, Deg, Quaternion};
-use nice_engine::{camera::Camera, direct_light::DirectLight, window::Window, Context};
+use nice_engine::{camera::Camera, direct_light::DirectLight, window::Window, Context, GpuFuture};
 use simplelog::{LevelFilter, SimpleLogger};
 use std::{collections::HashSet, time::Instant};
-use vulkano::sync::GpuFuture;
 use winit::{
 	dpi::LogicalSize, DeviceEvent, ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, WindowEvent,
 };

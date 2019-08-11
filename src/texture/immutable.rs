@@ -18,23 +18,6 @@ pub struct ImmutableTexture {
 	image: Arc<dyn ImageViewAccess + Send + Sync>,
 }
 impl ImmutableTexture {
-	pub fn from_iter<F, P, I>(
-		ctx: &Context,
-		iter: I,
-		dimensions: [u32; 2],
-		format: F,
-	) -> Result<(Self, impl GpuFuture), ImageCreationError>
-	where
-		P: Send + Sync + Clone + 'static,
-		F: FormatDesc + AcceptsPixels<P> + 'static + Send + Sync,
-		I: ExactSizeIterator<Item = P>,
-		Format: AcceptsPixels<P>,
-	{
-		let buffer =
-			CpuAccessibleBuffer::from_iter(ctx.queue().device().clone(), BufferUsage::transfer_source(), iter).unwrap();
-		Self::from_buffer(ctx.queue().clone(), buffer, dimensions, format)
-	}
-
 	pub(crate) fn from_buffer<F, B, P>(
 		queue: Arc<Queue>,
 		buffer: B,

@@ -12,13 +12,13 @@ use vulkano::{
 };
 
 const DEPTH_FORMAT: Format = Format::D32Sfloat;
-//const ALT_DEPTH_FORMAT: Format = Format::X8_D24UnormPack32;
+// const ALT_DEPTH_FORMAT: Format = Format::X8_D24UnormPack32;
 const DIFFUSE_FORMAT: Format = Format::A2B10G10R10UnormPack32;
 const POSITION_FORMAT: Format = Format::R32G32B32A32Sfloat;
 const NORMAL_FORMAT: Format = Format::R32G32B32A32Sfloat;
 const LIGHT_FORMAT: Format = Format::R32G32B32A32Sfloat;
 
-pub struct DeferredPipelineDef;
+pub(crate) struct DeferredPipelineDef;
 impl PipelineDef for DeferredPipelineDef {
 	fn make_context(device: &Arc<Device>, queue: &Arc<Queue>) -> (Box<dyn PipelineContext>, Box<dyn GpuFuture>) {
 		let (pctx, future) = DeferredPipelineContext::new(device, queue);
@@ -233,7 +233,7 @@ void main() {
 
 	float metal = 0.0;
 	float rough = 0.2;
-	
+
 	/*
 	bool grid = false;
 	if (mod(position.x, 1.0) < 0.5) grid = !grid;

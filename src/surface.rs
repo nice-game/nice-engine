@@ -10,7 +10,7 @@ use vulkano::{
 	sync::{FenceSignalFuture, GpuFuture},
 };
 
-pub const SWAP_FORMAT: Format = Format::B8G8R8A8Srgb;
+pub(crate) const SWAP_FORMAT: Format = Format::B8G8R8A8Srgb;
 
 pub struct Surface<W: Send + Sync + 'static = ()> {
 	device: Arc<Device>,
@@ -23,7 +23,7 @@ pub struct Surface<W: Send + Sync + 'static = ()> {
 }
 impl<W: Send + Sync + 'static> Surface<W> {
 	#[cfg(feature = "window")]
-	pub fn from_vk(ctx: &Arc<Context>, surface: Arc<VkSurface<W>>) -> Self {
+	pub(crate) fn from_vk(ctx: &Arc<Context>, surface: Arc<VkSurface<W>>) -> Self {
 		if !surface.is_supported(ctx.queue().family()).unwrap() {
 			panic!("Vulkan surface not supported");
 		}
@@ -91,11 +91,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		}
 	}
 
-	pub fn swapchain(&self) -> &Arc<Swapchain<W>> {
-		&self.swapchain
-	}
-
-	pub fn window(&self) -> &W {
+	pub(crate) fn window(&self) -> &W {
 		self.surface.window()
 	}
 

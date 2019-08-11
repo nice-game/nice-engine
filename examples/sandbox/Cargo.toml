@@ -8,7 +8,6 @@ edition = "2018"
 cgmath = "0.17.0"
 nice-engine = { path = "../.." }
 simplelog = "0.5"
-vulkano = { git = "https://github.com/IcyDefiance/vulkano.git" }
 winit = "0.19.1"
 
 [profile.release]

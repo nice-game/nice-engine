@@ -1,9 +1,6 @@
 use super::{
-	pipeline::DeferredPipeline, Vert2D,
-	DEPTH_FORMAT, DIFFUSE_FORMAT, NORMAL_FORMAT, POSITION_FORMAT, LIGHT_FORMAT,
-	geom_fshader, geom_vshader,
-	swap_fshader, swap_vshader,
-	light_fshader, light_vshader,
+	geom_fshader, geom_vshader, light_fshader, light_vshader, pipeline::DeferredPipeline, swap_fshader, swap_vshader,
+	Vert2D, DEPTH_FORMAT, DIFFUSE_FORMAT, LIGHT_FORMAT, NORMAL_FORMAT, POSITION_FORMAT,
 };
 use crate::{
 	pipelines::{Pipeline, PipelineContext},
@@ -78,9 +75,15 @@ impl DeferredPipelineContext {
 			Self {
 				inner: Arc::new(DeferredPipelineContextInner {
 					render_pass,
-					geom_vshader, geom_fshader, layout_desc,
-					swap_vshader, swap_fshader, swap_layout_desc,
-					light_vshader, light_fshader, light_layout_desc,
+					geom_vshader,
+					geom_fshader,
+					layout_desc,
+					swap_vshader,
+					swap_fshader,
+					swap_layout_desc,
+					light_vshader,
+					light_fshader,
+					light_layout_desc,
 					vertices,
 					indices,
 				}),

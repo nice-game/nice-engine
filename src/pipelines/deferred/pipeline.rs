@@ -1,12 +1,8 @@
 use super::{
-	context::DeferredPipelineContextInner,
-		geom_fshader, geom_vshader,
-		swap_fshader, swap_vshader,
-		light_fshader, light_vshader,
-		Vert2D,
-		DEPTH_FORMAT, DIFFUSE_FORMAT, NORMAL_FORMAT, POSITION_FORMAT, LIGHT_FORMAT,
+	context::DeferredPipelineContextInner, geom_fshader, geom_vshader, light_fshader, light_vshader, swap_fshader,
+	swap_vshader, Vert2D, DEPTH_FORMAT, DIFFUSE_FORMAT, LIGHT_FORMAT, NORMAL_FORMAT, POSITION_FORMAT,
 };
-use crate::{camera::Camera, mesh::Mesh, mesh_data, direct_light::DirectLight, pipelines::Pipeline};
+use crate::{camera::Camera, direct_light::DirectLight, mesh::Mesh, mesh_data, pipelines::Pipeline};
 use std::sync::Arc;
 use vulkano::{
 	buffer::BufferAccess,
@@ -16,7 +12,11 @@ use vulkano::{
 	framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass},
 	image::{AttachmentImage, ImageViewAccess},
 	instance::QueueFamily,
-	pipeline::{viewport::Viewport, GraphicsPipeline, GraphicsPipelineAbstract, blend::AttachmentBlend, blend::BlendOp, blend::BlendFactor},
+	pipeline::{
+		blend::{AttachmentBlend, BlendFactor, BlendOp},
+		viewport::Viewport,
+		GraphicsPipeline, GraphicsPipelineAbstract,
+	},
 };
 
 pub(super) struct DeferredPipeline {
@@ -49,8 +49,22 @@ impl DeferredPipeline {
 	}
 }
 impl Pipeline for DeferredPipeline {
-	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, meshes: &[Mesh], lights: &[DirectLight]) -> AutoCommandBuffer {
-		let clear_values = vec![1.0.into(), [0.0, 0.0, 0.0, 1.0].into(), [0.0; 4].into(), [0.0; 4].into(), [0.0; 4].into(), [0.0; 4].into()];
+	fn draw(
+		&self,
+		image_num: usize,
+		qfam: QueueFamily,
+		cam: &Camera,
+		meshes: &[Mesh],
+		lights: &[DirectLight],
+	) -> AutoCommandBuffer {
+		let clear_values = vec![
+			1.0.into(),
+			[0.0, 0.0, 0.0, 1.0].into(),
+			[0.0; 4].into(),
+			[0.0; 4].into(),
+			[0.0; 4].into(),
+			[0.0; 4].into(),
+		];
 
 		let make_pc = |mesh: &Mesh| geom_vshader::ty::PushConsts {
 			cam_proj: cam.projection().into(),
@@ -109,26 +123,24 @@ impl Pipeline for DeferredPipeline {
 						LightColor: [light.color.x, light.color.y, light.color.z, light_cutoff * radius_squared],
 						_dummy0: unsafe { std::mem::uninitialized() },
 					},
-				).unwrap();
+				)
+				.unwrap();
 		}
 
 		command_buffer = command_buffer
-			.next_subpass(false).unwrap()
+			.next_subpass(false)
+			.unwrap()
 			.draw_indexed(
 				self.swap_pipeline.clone(),
 				&Default::default(),
 				vec![self.ctx.vertices.clone()],
 				self.ctx.indices.clone(),
 				self.gbuffers_desc.clone(),
-				swap_fshader::ty::PushConsts {
-					Exposure: cam.exposure,
-				},
-			).unwrap();
+				swap_fshader::ty::PushConsts { Exposure: cam.exposure },
+			)
+			.unwrap();
 
-
-		command_buffer
-			.end_render_pass().unwrap()
-			.build().unwrap()
+		command_buffer.end_render_pass().unwrap().build().unwrap()
 	}
 
 	fn resize(&mut self, images: Vec<Arc<dyn ImageViewAccess + Send + Sync>>, dimensions: [u32; 2]) {
@@ -167,13 +179,20 @@ fn create_framebuffers(
 		.map(|image| {
 			Arc::new(
 				Framebuffer::start(swap_pass.clone())
-					.add(gbuffers.depth.clone()).unwrap()
-					.add(gbuffers.diffuse.clone()).unwrap()
-					.add(gbuffers.normal.clone()).unwrap()
-					.add(gbuffers.position.clone()).unwrap()
-					.add(gbuffers.light.clone()).unwrap()
-					.add(image).unwrap()
-					.build().unwrap(),
+					.add(gbuffers.depth.clone())
+					.unwrap()
+					.add(gbuffers.diffuse.clone())
+					.unwrap()
+					.add(gbuffers.normal.clone())
+					.unwrap()
+					.add(gbuffers.position.clone())
+					.unwrap()
+					.add(gbuffers.light.clone())
+					.unwrap()
+					.add(image)
+					.unwrap()
+					.build()
+					.unwrap(),
 			) as Arc<dyn FramebufferAbstract + Send + Sync>
 		})
 		.collect()
@@ -286,11 +305,17 @@ where
 {
 	Arc::new(
 		PersistentDescriptorSet::start(layout, 0)
-			.add_image(gbuffers.depth.clone()).unwrap()
-			.add_image(gbuffers.diffuse.clone()).unwrap()
-			.add_image(gbuffers.normal.clone()).unwrap()
-			.add_image(gbuffers.position.clone()).unwrap()
-			.add_image(gbuffers.light.clone()).unwrap()
-			.build().unwrap(),
+			.add_image(gbuffers.depth.clone())
+			.unwrap()
+			.add_image(gbuffers.diffuse.clone())
+			.unwrap()
+			.add_image(gbuffers.normal.clone())
+			.unwrap()
+			.add_image(gbuffers.position.clone())
+			.unwrap()
+			.add_image(gbuffers.light.clone())
+			.unwrap()
+			.build()
+			.unwrap(),
 	)
 }

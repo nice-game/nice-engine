@@ -1,6 +1,6 @@
 use crate::{
 	mesh_data::MeshData,
-	texture::{ImmutableTexture, Texture, TargetTexture},
+	texture::{ImmutableTexture, TargetTexture, Texture},
 	transform::Transform,
 };
 use std::{ops::Range, sync::Arc};
@@ -27,36 +27,14 @@ impl Mesh {
 		sampler: Arc<Sampler>,
 	) -> Self {
 		let texture_descs = vec![];
-		Self { layout_desc, white_pixel, sampler, mesh_data: None, transform: Transform::default(), texture_descs, lightmap: None }
-	}
-
-	pub fn mesh_data(&self) -> &Option<Arc<MeshData>> {
-		&self.mesh_data
-	}
-
-	pub fn refresh(&mut self) {
-		for mat in &mut self.texture_descs {
-			if mat.tex1_tex.image().inner().internal_object() != mat.tex1.image(0).unwrap().0.inner().internal_object()
-			{
-				mat.tex1 = make_desc_set(self.layout_desc.clone(), mat.tex1_tex.image().clone(), self.lightmap.as_ref(), self.sampler.clone());
-			}
-		}
-	}
-
-	pub fn set_mesh_data(&mut self, mesh_data: Option<Arc<MeshData>>) {
-		self.mesh_data = mesh_data;
-		if let Some(data) = self.mesh_data.as_ref() {
-			self.texture_descs = vec![MaterialDesc::new(
-				0..data.indices().len(),
-				Arc::new(self.white_pixel.clone()),
-				Arc::new(self.white_pixel.clone()),
-				make_desc_set(self.layout_desc.clone(), self.white_pixel.image().clone(), self.lightmap.as_ref(), self.sampler.clone()),
-				make_desc_set(self.layout_desc.clone(), self.white_pixel.image().clone(), self.lightmap.as_ref(), self.sampler.clone()),
-				0,
-				0,
-				0,
-				[0; 3],
-			)];
+		Self {
+			layout_desc,
+			white_pixel,
+			sampler,
+			mesh_data: None,
+			transform: Transform::default(),
+			texture_descs,
+			lightmap: None,
 		}
 	}
 
@@ -66,6 +44,51 @@ impl Mesh {
 
 	pub fn transform_mut(&mut self) -> &mut Transform {
 		&mut self.transform
+	}
+
+	pub(crate) fn mesh_data(&self) -> &Option<Arc<MeshData>> {
+		&self.mesh_data
+	}
+
+	pub(crate) fn refresh(&mut self) {
+		for mat in &mut self.texture_descs {
+			if mat.tex1_tex.image().inner().internal_object() != mat.tex1.image(0).unwrap().0.inner().internal_object()
+			{
+				mat.tex1 = make_desc_set(
+					self.layout_desc.clone(),
+					mat.tex1_tex.image().clone(),
+					self.lightmap.as_ref(),
+					self.sampler.clone(),
+				);
+			}
+		}
+	}
+
+	pub(crate) fn set_mesh_data(&mut self, mesh_data: Option<Arc<MeshData>>) {
+		self.mesh_data = mesh_data;
+		if let Some(data) = self.mesh_data.as_ref() {
+			self.texture_descs = vec![MaterialDesc::new(
+				0..data.indices().len(),
+				Arc::new(self.white_pixel.clone()),
+				Arc::new(self.white_pixel.clone()),
+				make_desc_set(
+					self.layout_desc.clone(),
+					self.white_pixel.image().clone(),
+					self.lightmap.as_ref(),
+					self.sampler.clone(),
+				),
+				make_desc_set(
+					self.layout_desc.clone(),
+					self.white_pixel.image().clone(),
+					self.lightmap.as_ref(),
+					self.sampler.clone(),
+				),
+				0,
+				0,
+				0,
+				[0; 3],
+			)];
+		}
 	}
 
 	pub(crate) fn texture_descs(&self) -> &Vec<MaterialDesc> {
@@ -80,8 +103,18 @@ impl Mesh {
 					mat.range.clone(),
 					mat.tex1.clone(),
 					mat.tex2.clone(),
-					make_desc_set(self.layout_desc.clone(), mat.tex1.image().clone(), self.lightmap.as_ref(), self.sampler.clone()),
-					make_desc_set(self.layout_desc.clone(), mat.tex2.image().clone(), self.lightmap.as_ref(), self.sampler.clone()),
+					make_desc_set(
+						self.layout_desc.clone(),
+						mat.tex1.image().clone(),
+						self.lightmap.as_ref(),
+						self.sampler.clone(),
+					),
+					make_desc_set(
+						self.layout_desc.clone(),
+						mat.tex2.image().clone(),
+						self.lightmap.as_ref(),
+						self.sampler.clone(),
+					),
 					mat.light_penetration,
 					mat.subsurface_scattering,
 					mat.emissive_brightness,
@@ -168,9 +201,10 @@ where
 	L: PipelineLayoutAbstract + Send + Sync + 'static,
 	T: ImageViewAccess + Send + Sync + 'static,
 {
-	Arc::new(PersistentDescriptorSet::start(layout, 0)
+	Arc::new(
+		PersistentDescriptorSet::start(layout, 0)
 		.add_sampled_image(image_view, sampler.clone()).unwrap()
 //		.add_sampled_image(lightmap.unwrap().image().clone(), sampler.clone()).unwrap()
-		.build().unwrap()
+		.build().unwrap(),
 	)
 }
