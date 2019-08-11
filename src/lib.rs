@@ -17,10 +17,14 @@ use crate::{
 	resources::Resources,
 };
 use log::info;
-use std::sync::{Arc, Mutex};
+use maplit::hashset;
+use std::{
+	collections::HashSet,
+	sync::{Arc, Mutex},
+};
 use vulkano::{
 	device::{Device, DeviceExtensions, Features, Queue},
-	instance::{debug::DebugCallback, ApplicationInfo, Instance, InstanceExtensions, PhysicalDevice},
+	instance::{self, debug::DebugCallback, ApplicationInfo, Instance, InstanceExtensions, PhysicalDevice},
 };
 pub use vulkano::{
 	instance::{InstanceCreationError, Version},
@@ -31,7 +35,9 @@ use world::World;
 /// Root struct for this library. Any windows that are created using the same context will share some resources.
 pub struct Context {
 	instance: Arc<Instance>,
+	// `debug_callback` isn't used within rust code, but must stay in scope so the validation layers can use it
 	#[allow(dead_code)]
+	#[cfg(debug_assertions)]
 	debug_callback: DebugCallback,
 	device: Arc<Device>,
 	queue: Arc<Queue>,
@@ -65,6 +71,7 @@ impl Context {
 			khr_win32_surface: true,
 			mvk_ios_surface: true,
 			mvk_macos_surface: true,
+			#[cfg(debug_assertions)]
 			ext_debug_report: true,
 			..InstanceExtensions::none()
 		};
@@ -74,8 +81,17 @@ impl Context {
 			Err(_) => InstanceExtensions::none(),
 		};
 
-		let instance = Instance::new(Some(&app_info), &exts, vec!["VK_LAYER_KHRONOS_validation"])?;
+		let layers = hashset! {
+			#[cfg(debug_assertions)]
+			"VK_LAYER_KHRONOS_validation".to_owned()
+		};
+		let instance_layers =
+			instance::layers_list().unwrap().map(|l| l.name().to_owned()).collect::<HashSet<String>>();
+		let layers = instance_layers.intersection(&layers).map(|s| s as &str);
 
+		let instance = Instance::new(Some(&app_info), &exts, layers)?;
+
+		#[cfg(debug_assertions)]
 		let debug_callback = DebugCallback::errors_and_warnings(&instance, |msg| {
 			if msg.ty.error {
 				log::error!("[{}]{}", msg.layer_prefix, msg.description);
@@ -116,6 +132,7 @@ impl Context {
 		Ok((
 			Arc::new(Self {
 				instance,
+				#[cfg(debug_assertions)]
 				debug_callback,
 				device,
 				queue,
