@@ -45,7 +45,7 @@ layout(location = 2) in vec2 texc;
 layout(location = 3) in vec2 lmap;
 
 layout(location = 0) out vec3 out_nor;
-layout(location = 1) out vec2 out_texc;
+layout(location = 1) out vec4 out_texc;
 layout(location = 2) out vec3 out_pos;
 
 layout(push_constant) uniform PushConsts {
@@ -79,7 +79,7 @@ void main() {
 
 	out_nor = quat_mul(mesh_rot, nor);
 	out_pos = pos_ws;
-	out_texc = texc;
+	out_texc = vec4(texc, lmap);
 	gl_Position = perspective(pc.cam_proj, pos_es);
 }"
 	}
@@ -91,7 +91,7 @@ mod geom_fshader {
 		src: "
 #version 450
 layout(location = 0) in vec3 nor;
-layout(location = 1) in vec2 texc;
+layout(location = 1) in vec4 texc;
 layout(location = 2) in vec3 pos;
 
 layout(location = 0) out vec4 color;
@@ -101,7 +101,7 @@ layout(location = 2) out vec4 position;
 layout(set = 0, binding = 0) uniform sampler2D tex;
 
 void main() {
-	vec4 tex = texture(tex, texc);
+	vec4 tex = texture(tex, texc.xy);
 	if (tex.w < 0.125) discard;
 	//tex.rgb = sqrt(tex.rgb); // FIXME: do this for srgb or linear textures, skip it for quadratic textures.
 	color = vec4(tex.rgb, 0);
@@ -118,12 +118,10 @@ mod swap_vshader {
 		src: "
 #version 450
 layout(location = 0) in vec2 pos;
-layout(location = 2) in vec2 texc;
-
-layout(location = 0) out vec2 out_texc;
+layout(location = 0) out vec2 dir;
 
 void main() {
-	out_texc = texc;
+	dir = pos.xy;
 	gl_Position = vec4(pos, 0, 1);
 }"
 	}
@@ -134,7 +132,7 @@ mod swap_fshader {
 		ty: "fragment",
 		src: "
 #version 450
-layout(location = 0) in vec2 texc;
+layout(location = 0) in vec2 dir;
 layout(location = 0) out vec4 pixel;
 
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput g_depth;
@@ -147,12 +145,19 @@ layout(push_constant) uniform PushConsts {
 	float Exposure;
 } pc;
 
+vec3 skybox() {
+	vec3 skydir = vec3(dir.xy, 1.0);
+	return vec3(0.2468004196015504, 0.6253447208024265, 0.8355277914608409);
+}
+
 void main() {
 	float depth = subpassLoad(g_depth).x;
 	vec3 color = subpassLoad(g_light).rgb;
+	if (depth == 1.0) color = skybox();
 	color *= pc.Exposure;
-	color /= 1.0 + color;
-	pixel = vec4(color, 0);
+	color /= 1.0 + length(color);
+	// color = (color * (2.51 * color + 0.03)) / (color * (2.43 * color + 0.59) + 0.14); // ACES
+	pixel = vec4(color, 0); // Don't gamma correct! Output framebuffer has hardware sRGB encoding.
 }
 "
 	}
@@ -164,12 +169,8 @@ mod light_vshader {
 		src: "
 #version 450
 layout(location = 0) in vec2 pos;
-layout(location = 2) in vec2 texc;
-
-layout(location = 0) out vec2 out_texc;
 
 void main() {
-	out_texc = texc;
 	gl_Position = vec4(pos, 0, 1);
 }"
 	}
@@ -180,7 +181,6 @@ mod light_fshader {
 		ty: "fragment",
 		src: "
 #version 450
-layout(location = 0) in vec2 texc;
 layout(location = 0) out vec4 pixel;
 
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput g_depth;
@@ -213,19 +213,38 @@ vec3 inv_perspective(vec4 Projection, vec3 Position) {
 	return Projection.w * vec3(Position.xy / Projection.xy, 1.0) / (Position.z + Projection.z);
 }
 
+vec3 oren_nayar(vec3 lightDirection, vec3 viewDirection, vec3 surfaceNormal, float rough, vec3 albedo) {
+	float LdotV = dot(lightDirection, viewDirection);
+	float NdotL = dot(lightDirection, surfaceNormal);
+	float NdotV = dot(surfaceNormal, viewDirection);
+	float s = LdotV - NdotL * NdotV;
+	float t = mix(1.0, max(NdotL, NdotV), step(0.0, s));
+	float sigma2 = rough * rough;
+	vec3 A = 1.0 + sigma2 * (albedo / (sigma2 + 0.13) + 0.5 / (sigma2 + 0.33));
+	float B = 0.45 * sigma2 / (sigma2 + 0.09);
+	return albedo * max(0.0, NdotL) * (A + B * s / t) / 3.14159265;
+}
+
 void main() {
 	vec3 position = subpassLoad(g_position).xyz;
 	vec3 normal = subpassLoad(g_normal).xyz;
 	vec3 color = subpassLoad(g_color).rgb;
 	color *= color;
 
-	float metalness = 0.0;
-	float smoothness = 0.5;
+	float metal = 0.0;
+	float rough = 0.2;
+	
+	/*
+	bool grid = false;
+	if (mod(position.x, 1.0) < 0.5) grid = !grid;
+	if (mod(position.y, 1.0) < 0.5) grid = !grid;
+	if (mod(position.z, 1.0) < 0.5) grid = !grid;
+	if (grid) metal = 1.0;
+	*/
 
-	vec3 diffuseColor = color * (1.0 - metalness);
-	vec3 specularColor = mix(vec3(0.04), color, metalness);
-	float specularExponent = 128.0 * pow(2.0, 8.0 * smoothness - 4.0);
+	float specularExponent = 128.0 * pow(2.0, 4.0 - 8.0 * rough);
 	float specularNorm = specularExponent * 0.03978873577297383 + 0.2785211504108169;
+	vec3 diffuseColor = color * (1.0 - metal);
 
 	float lightRadiusSquaredTimesCutoff = pc.LightColor.w;
 	float lightRadiusSquaredInverse = pc.LightPosition.w;
@@ -235,13 +254,13 @@ void main() {
 	lightFalloff *= lightFalloff; lightFalloff *= lightFalloff;
 	lightFalloff = 1.0 - lightFalloff;
 	lightFalloff = mix(lightFalloff * lightFalloff, lightFalloff, 0.3095096836885878);
-	lightFalloff *= max(0.0, dot(normal, normalize(lightOffset))) / (1.0 + lightDistanceSquared);
+	lightFalloff *= max(0.0, dot(normal, normalize(lightOffset)));
+	lightFalloff /= 1.0 + lightDistanceSquared;
 	lightFalloff *= lightRadiusSquaredTimesCutoff;
 	vec3 lightPower = pc.LightColor.rgb * lightFalloff;
-	float lightSpecular = pow(max(0.0, dot(normalize(normalize(pc.LightPosition.xyz - position) + normalize(pc.CameraOffset - position)), normal)), specularExponent) * specularNorm;
-	vec3 diffuse = lightPower * diffuseColor;
-	vec3 specular = lightPower * specularColor * lightSpecular;
-	pixel = vec4(diffuse + specular, 0);
+	float specularPower = pow(max(0.0, dot(normalize(normalize(pc.LightPosition.xyz - position) + normalize(pc.CameraOffset - position)), normal)), specularExponent) * specularNorm;
+	vec3 specularColor = mix(vec3(0.04), color, metal) * specularPower;
+	pixel = vec4((diffuseColor + specularColor) * lightPower, 1);
 }
 "
 	}

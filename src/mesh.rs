@@ -1,6 +1,6 @@
 use crate::{
 	mesh_data::MeshData,
-	texture::{ImmutableTexture, Texture},
+	texture::{ImmutableTexture, Texture, TargetTexture},
 	transform::Transform,
 };
 use std::{ops::Range, sync::Arc};
@@ -18,6 +18,7 @@ pub struct Mesh {
 	mesh_data: Option<Arc<MeshData>>,
 	transform: Transform,
 	texture_descs: Vec<MaterialDesc>,
+	lightmap: Option<TargetTexture>,
 }
 impl Mesh {
 	pub(crate) fn new(
@@ -26,7 +27,7 @@ impl Mesh {
 		sampler: Arc<Sampler>,
 	) -> Self {
 		let texture_descs = vec![];
-		Self { layout_desc, white_pixel, sampler, mesh_data: None, transform: Transform::default(), texture_descs }
+		Self { layout_desc, white_pixel, sampler, mesh_data: None, transform: Transform::default(), texture_descs, lightmap: None }
 	}
 
 	pub fn mesh_data(&self) -> &Option<Arc<MeshData>> {
@@ -37,7 +38,7 @@ impl Mesh {
 		for mat in &mut self.texture_descs {
 			if mat.tex1_tex.image().inner().internal_object() != mat.tex1.image(0).unwrap().0.inner().internal_object()
 			{
-				mat.tex1 = make_desc_set(self.layout_desc.clone(), mat.tex1_tex.image().clone(), self.sampler.clone());
+				mat.tex1 = make_desc_set(self.layout_desc.clone(), mat.tex1_tex.image().clone(), self.lightmap.as_ref(), self.sampler.clone());
 			}
 		}
 	}
@@ -49,8 +50,8 @@ impl Mesh {
 				0..data.indices().len(),
 				Arc::new(self.white_pixel.clone()),
 				Arc::new(self.white_pixel.clone()),
-				make_desc_set(self.layout_desc.clone(), self.white_pixel.image().clone(), self.sampler.clone()),
-				make_desc_set(self.layout_desc.clone(), self.white_pixel.image().clone(), self.sampler.clone()),
+				make_desc_set(self.layout_desc.clone(), self.white_pixel.image().clone(), self.lightmap.as_ref(), self.sampler.clone()),
+				make_desc_set(self.layout_desc.clone(), self.white_pixel.image().clone(), self.lightmap.as_ref(), self.sampler.clone()),
 				0,
 				0,
 				0,
@@ -79,8 +80,8 @@ impl Mesh {
 					mat.range.clone(),
 					mat.tex1.clone(),
 					mat.tex2.clone(),
-					make_desc_set(self.layout_desc.clone(), mat.tex1.image().clone(), self.sampler.clone()),
-					make_desc_set(self.layout_desc.clone(), mat.tex2.image().clone(), self.sampler.clone()),
+					make_desc_set(self.layout_desc.clone(), mat.tex1.image().clone(), self.lightmap.as_ref(), self.sampler.clone()),
+					make_desc_set(self.layout_desc.clone(), mat.tex2.image().clone(), self.lightmap.as_ref(), self.sampler.clone()),
 					mat.light_penetration,
 					mat.subsurface_scattering,
 					mat.emissive_brightness,
@@ -160,11 +161,16 @@ impl MaterialDesc {
 fn make_desc_set<L, T: ImageViewAccess>(
 	layout: L,
 	image_view: T,
+	lightmap: Option<&TargetTexture>,
 	sampler: Arc<Sampler>,
 ) -> Arc<dyn DescriptorSet + Send + Sync>
 where
 	L: PipelineLayoutAbstract + Send + Sync + 'static,
 	T: ImageViewAccess + Send + Sync + 'static,
 {
-	Arc::new(PersistentDescriptorSet::start(layout, 0).add_sampled_image(image_view, sampler).unwrap().build().unwrap())
+	Arc::new(PersistentDescriptorSet::start(layout, 0)
+		.add_sampled_image(image_view, sampler.clone()).unwrap()
+//		.add_sampled_image(lightmap.unwrap().image().clone(), sampler.clone()).unwrap()
+		.build().unwrap()
+	)
 }
