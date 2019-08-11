@@ -24,6 +24,9 @@ pub struct Surface<W: Send + Sync + 'static = ()> {
 impl<W: Send + Sync + 'static> Surface<W> {
 	#[cfg(feature = "window")]
 	pub fn from_vk(ctx: &Arc<Context>, surface: Arc<VkSurface<W>>) -> Self {
+		if !surface.is_supported(ctx.queue().family()).unwrap() {
+			panic!("Vulkan surface not supported");
+		}
 		Self::new_inner(ctx, surface)
 	}
 
@@ -46,10 +49,13 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		}
 
 		let lights = self.world.lights().lock().unwrap();
-		
+
 		let future = prev_frame_end
 			.join(acquire_future)
-			.then_execute(self.queue.clone(), self.pipeline.draw(image_num, self.queue.family(), cam, &*meshes, &*lights))
+			.then_execute(
+				self.queue.clone(),
+				self.pipeline.draw(image_num, self.queue.family(), cam, &*meshes, &*lights),
+			)
 			.unwrap()
 			.then_swapchain_present(self.queue.clone(), self.swapchain.clone(), image_num)
 			.then_signal_fence_and_flush();
