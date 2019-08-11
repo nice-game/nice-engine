@@ -2,7 +2,6 @@ mod mipmaps_command_buffer;
 
 use self::mipmaps_command_buffer::MipmapsCommandBuffer;
 use super::Texture;
-use crate::Context;
 use std::sync::Arc;
 use vulkano::{
 	buffer::{BufferAccess, BufferUsage, CpuAccessibleBuffer, TypedBufferAccess},
