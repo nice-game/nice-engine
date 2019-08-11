@@ -93,6 +93,10 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		&self.swapchain
 	}
 
+	pub fn window(&self) -> &W {
+		self.surface.window()
+	}
+
 	fn new_inner(ctx: &Arc<Context>, surface: Arc<VkSurface<W>>) -> Self {
 		let device = ctx.device().clone();
 		let queue = ctx.queue().clone();
