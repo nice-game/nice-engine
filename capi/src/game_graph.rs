@@ -45,21 +45,21 @@ impl GGPlatform {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(C)]
 pub enum GGVertexFormat {
-	UNDEFINED = 0,
-	PNTL_32F,
-	PNTLB3_32F,
-	PNTLB7_32F,
+	VFMT_UNDEFINED = 0,
+	VFMT_PNTL_32F,
+	VFMT_PNTLB3_32F,
+	VFMT_PNTLB7_32F,
 }
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(C)]
 pub enum GGIndexFormat {
-	UNDEFINED = 0,
-	SOUP_16U,
-	SOUP_32U,
-	STRIP_16U,
-	STRIP_32U,
+	IFMT_UNDEFINED = 0,
+	IFMT_SOUP_16U,
+	IFMT_SOUP_32U,
+	IFMT_STRIP_16U,
+	IFMT_STRIP_32U,
 }
 
 #[allow(non_camel_case_types)]
@@ -67,10 +67,10 @@ pub enum GGIndexFormat {
 #[repr(C)]
 pub enum GGDistanceFormat {
 	DFMT_UNDEFINED = 0,
-	EXACT_DISTANCE_8,
-	EXACT_DISTANCE_32F,
-	BOUND_DISTANCE_8,
-	BOUND_DISTANCE_32F,
+	DFMT_EXACT_DISTANCE_8,
+	DFMT_EXACT_DISTANCE_32F,
+	DFMT_BOUND_DISTANCE_8,
+	DFMT_BOUND_DISTANCE_32F,
 }
 
 #[allow(non_camel_case_types)]
@@ -142,8 +142,9 @@ pub enum GGDriverStatus {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(C)]
 pub enum GGImageUsage {
-	UNDEFINED = 0,
-	STATIC,
-	TARGET,
-	OVERLAY,
+	IMG_USAGE_UNDEFINED = 0,
+	IMG_USAGE_STATIC,
+	IMG_USAGE_TARGET,
+	IMG_USAGE_OVERLAY,
+	IMG_USAGE_GLYPH,
 }

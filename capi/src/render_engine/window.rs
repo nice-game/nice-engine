@@ -53,10 +53,16 @@ pub extern fn Window_IsValid(_this: *mut GGD_Window) -> i32 {
 
 #[allow(non_snake_case)]
 pub unsafe extern fn Window_Resize(this: *mut GGD_Window, w: u32, h: u32) {
-	let this_ref = &mut *this;
+	let this = &mut *this;
 
-	this_ref.resize(w, h);
+	this.resize(w, h);
 }
 
 #[allow(non_snake_case)]
-pub extern fn Window_Draw(_this: *mut GGD_Window, _src: *mut GGD_Camera, _overlay: *mut GGD_ImageData) {}
+pub extern fn Window_SetCamera(_dst: *mut GGD_Window, _camera: *mut GGD_Camera) {}
+
+#[allow(non_snake_case)]
+pub extern fn Window_SetOverlay(_dst: *mut GGD_Window, _overlay: *mut GGD_ImageData) {}
+
+#[allow(non_snake_case)]
+pub extern fn Window_Draw(_this: *mut GGD_Window) {}

@@ -1,6 +1,6 @@
 use crate::{
 	game_graph::GGTransform,
-	game_graph_driver::{GGD_Camera, GGD_MeshBatch},
+	game_graph_driver::{GGD_Camera, GGD_MeshGroup},
 };
 use nice_engine::camera::Camera;
 
@@ -21,7 +21,7 @@ pub unsafe extern fn Camera_SetPerspective(this: *mut GGD_Camera, aspect: f32, f
 }
 
 #[allow(non_snake_case)]
-pub extern fn Camera_SetMeshBatch(_this: *mut GGD_Camera, _mesh_batch: *mut GGD_MeshBatch) {}
+pub extern fn Camera_SetMeshGroup(_this: *mut GGD_Camera, _mesh_group: *mut GGD_MeshGroup) {}
 
 #[allow(non_snake_case)]
-pub extern fn Camera_SetTransform(_this: *mut GGD_Camera, _transform: *mut GGTransform) {}
+pub extern fn Camera_SetTransform(_this: *mut GGD_Camera, _transform: *const GGTransform) {}
