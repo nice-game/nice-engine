@@ -1,7 +1,7 @@
 use crate::game_graph::*;
 use libc::c_void;
 use nice_engine::{camera::Camera, mesh_data::MeshData, surface::Surface};
-use std::os::raw::c_char;
+use std::{os::raw::c_char, sync::Arc};
 
 #[allow(non_camel_case_types)]
 pub type GGD_Camera = Camera;
@@ -26,7 +26,7 @@ pub struct GGD_ImageData {}
 pub struct GGD_MeshBatch {}
 
 #[allow(non_camel_case_types)]
-pub type GGD_MeshData = MeshData;
+pub type GGD_MeshData = Arc<MeshData>;
 
 #[allow(non_camel_case_types)]
 pub struct GGD_MeshInstance {}
@@ -51,7 +51,14 @@ pub struct GGD_RenderEngine {
 	pub Window_Resize: unsafe extern fn(*mut GGD_Window, w: u32, h: u32),
 	pub Window_Draw: extern fn(*mut GGD_Window, src: *mut GGD_Camera, overlay: *mut GGD_ImageData),
 
-	pub MeshData_Alloc: unsafe extern fn() -> *mut GGD_MeshData,
+	pub MeshData_Alloc: unsafe extern fn(
+		vertexBuffer: *const c_void,
+		vertexCount: u32,
+		vertexFormat: GGVertexFormat,
+		indexBuffer: *const c_void,
+		indexCount: u32,
+		indexFormat: GGIndexFormat,
+	) -> *mut GGD_MeshData,
 	pub MeshData_Free: unsafe extern fn(*mut GGD_MeshData),
 	pub MeshData_Prepare: Option<extern fn(*mut GGD_MeshData)>,
 	pub MeshData_SetCacheData: Option<extern fn(*mut GGD_MeshData, buffer: *const c_void, size: u32) -> i32>,
@@ -61,12 +68,8 @@ pub struct GGD_RenderEngine {
 	pub MeshData_GetDistanceData: Option<
 		extern fn(*mut GGD_MeshData, buffer: *mut c_void, x: u32, y: u32, z: u32, format: *mut GGDistanceFormat),
 	>,
-	pub MeshData_SetVertexData:
-		unsafe extern fn(*mut GGD_MeshData, buffer: *const c_void, count: u32, format: GGVertexFormat),
 	pub MeshData_GetVertexData:
 		extern fn(*mut GGD_MeshData, buffer: *mut c_void, count: *mut u32, format: *mut GGVertexFormat),
-	pub MeshData_SetIndexData:
-		unsafe extern fn(*mut GGD_MeshData, buffer: *const c_void, count: u32, format: GGIndexFormat),
 	pub MeshData_GetIndexData:
 		extern fn(*mut GGD_MeshData, buffer: *mut c_void, count: *mut u32, format: *mut GGIndexFormat),
 	pub MeshData_UseIndexData: Option<extern fn(*mut GGD_MeshData, src: *mut GGD_MeshData)>,

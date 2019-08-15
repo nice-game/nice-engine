@@ -143,7 +143,7 @@ pub(crate) fn from_nice_model(
 		});
 	}
 
-	(MeshData::from_bufs(vertices, indices, queue.clone()), mats, vertices_future.join(indices_future))
+	(MeshData::from_bufs(vertices, indices), mats, vertices_future.join(indices_future))
 }
 
 pub(crate) struct MaterialInfo {

@@ -11,11 +11,12 @@ use std::{slice, str};
 const GGD_API_VERSION: u64 = 0;
 
 mod ctx {
-	use nice_engine::{Context, Version};
+	use nice_engine::{Context, GpuFuture, Version};
+	use std::sync::Arc;
 
-	static mut CTX: Option<Context> = None;
+	static mut CTX: Option<Arc<Context>> = None;
 
-	pub unsafe fn get() -> &'static mut Context {
+	pub unsafe fn get() -> &'static mut Arc<Context> {
 		match CTX {
 			Some(ref mut ctx) => &mut *ctx,
 			None => panic!("tried to access uninitialized context. GGD_DriverMain must be called first."),
@@ -23,7 +24,9 @@ mod ctx {
 	}
 
 	pub unsafe fn init(name: Option<&str>, version: Option<Version>) {
-		CTX = Some(Context::new(name, version).unwrap());
+		let (ctx, ctx_future) = Context::new(name, version).unwrap();
+		ctx_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
+		CTX = Some(ctx);
 	}
 }
 

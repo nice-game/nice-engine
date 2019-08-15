@@ -28,9 +28,7 @@ pub const RENDER_ENGINE: GGD_RenderEngine = GGD_RenderEngine {
 	MeshData_GetCacheData: None,
 	MeshData_SetDistanceData: None,
 	MeshData_GetDistanceData: None,
-	MeshData_SetVertexData,
 	MeshData_GetVertexData,
-	MeshData_SetIndexData,
 	MeshData_GetIndexData,
 	MeshData_UseIndexData: None,
 

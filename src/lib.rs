@@ -161,16 +161,16 @@ impl Context {
 		&self.world
 	}
 
-	fn device(&self) -> &Arc<Device> {
+	pub fn device(&self) -> &Arc<Device> {
 		&self.device
+	}
+
+	pub fn queue(&self) -> &Arc<Queue> {
+		&self.queue
 	}
 
 	fn pipeline_ctx(&self) -> &dyn PipelineContext {
 		self.pipeline_ctxs[self.active_pipeline].as_ref()
-	}
-
-	fn queue(&self) -> &Arc<Queue> {
-		&self.queue
 	}
 }
 

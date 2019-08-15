@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 libc = "0.2"
 nice-engine = { path = "../", default-features = false }
+vulkano = { git = "https://github.com/IcyDefiance/vulkano.git" }
