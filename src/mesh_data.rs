@@ -2,7 +2,6 @@ use crate::Context;
 use std::sync::Arc;
 use vulkano::{
 	buffer::{BufferAccess, BufferUsage, ImmutableBuffer, TypedBufferAccess},
-	device::Queue,
 	memory::DeviceMemoryAllocError,
 	sync::GpuFuture,
 };

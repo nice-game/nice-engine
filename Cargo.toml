@@ -24,3 +24,6 @@ winit = { version = "0.19.1", optional = true }
 [features]
 default = ["window"]
 window = ["vulkano-win", "winit"]
+
+[profile.release]
+lto = true

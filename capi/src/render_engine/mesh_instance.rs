@@ -1,5 +1,5 @@
 use crate::{
-	game_graph::{GGMaterialLayer, GGTransform},
+	game_graph::GGTransform,
 	game_graph_driver::{GGD_ImageData, GGD_MeshGroup, GGD_MeshData, GGD_MeshInstance},
 };
 
@@ -20,7 +20,7 @@ pub extern fn MeshInstance_SetMeshData(_this: *mut GGD_MeshInstance, _mesh: *mut
 pub extern fn MeshInstance_SetImageData(
 	_this: *mut GGD_MeshInstance,
 	_image: *mut GGD_ImageData,
-	_layer: GGMaterialLayer,
+	_layer: i32,
 ) {
 }
 

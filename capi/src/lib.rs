@@ -3,10 +3,10 @@ mod game_graph_driver;
 mod render_engine;
 
 use self::{game_graph_driver::GGD_DriverContext, render_engine::RENDER_ENGINE};
-use crate::game_graph::GGDriverStatus;
+use crate::game_graph::GGDriverStatus::{self, *};
 use libc::strlen;
 use nice_engine::Version;
-use std::{slice, str};
+use std::{panic, ptr::null, slice, str};
 
 const GGD_API_VERSION: u64 = 0;
 
@@ -33,18 +33,24 @@ mod ctx {
 #[allow(non_snake_case)]
 #[no_mangle]
 pub unsafe extern fn GGD_DriverMain(X: *mut GGD_DriverContext) -> GGDriverStatus {
+	panic::set_hook(Box::new(|info| println!("{:?}", info)));
+
 	let X = &*X;
 
 	if X.APIVersion == GGD_API_VERSION {
 		(X.RegisterRenderEngine)(&mut RENDER_ENGINE);
 
-		let name = Some(str::from_utf8_unchecked(slice::from_raw_parts(X.GameName as _, strlen(X.GameName))));
+		let name = if X.GameName != null() {
+			Some(str::from_utf8_unchecked(slice::from_raw_parts(X.GameName as _, strlen(X.GameName))))
+		} else {
+			None
+		};
 		let version = Some(Version::from_vulkan_version(X.GameVersion as u32));
 		ctx::init(name, version);
 
-		GGDriverStatus::DRIVER_READY
+		GGD_STATUS_DRIVER_READY
 	} else {
-		GGDriverStatus::VERSION_INVALID
+		GGD_STATUS_VERSION_INVALID
 	}
 }
 

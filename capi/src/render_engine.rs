@@ -11,8 +11,8 @@ use crate::game_graph_driver::GGD_RenderEngine;
 
 pub const RENDER_ENGINE: GGD_RenderEngine = GGD_RenderEngine {
 	Name: "nIce Engine".as_ptr() as _,
-	Priority: 5,
-	GraphicsAPI: 50,
+	Priority: 10,
+	GraphicsAPI: 100,
 	Validate: None,
 	Shutdown: None,
 

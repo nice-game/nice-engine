@@ -62,12 +62,14 @@ pub struct GGD_RenderEngine {
 		indexCount: u32,
 		indexFormat: GGIndexFormat,
 	) -> *mut GGD_MeshData,
-	pub MeshData_Alloc_Polygon_Variant: Option<unsafe extern fn(
-		vertexBuffer: *const c_void,
-		vertexCount: u32,
-		vertexFormat: GGVertexFormat,
-		indexBuffer: *mut GGD_MeshData,
-	) -> *mut GGD_MeshData>,
+	pub MeshData_Alloc_Polygon_Variant: Option<
+		unsafe extern fn(
+			vertexBuffer: *const c_void,
+			vertexCount: u32,
+			vertexFormat: GGVertexFormat,
+			indexBuffer: *mut GGD_MeshData,
+		) -> *mut GGD_MeshData,
+	>,
 	pub MeshData_Alloc_Field:
 		Option<extern fn(buffer: *const c_void, x: u32, y: u32, z: u32, format: GGDistanceFormat) -> *mut GGD_MeshData>,
 	pub MeshData_Free: unsafe extern fn(*mut GGD_MeshData),
@@ -96,14 +98,14 @@ pub struct GGD_RenderEngine {
 	pub MeshInstance_SetCacheData: Option<extern fn(*mut GGD_MeshInstance, buffer: *const c_void, size: u32) -> i32>,
 	pub MeshInstance_GetCacheData: Option<extern fn(*mut GGD_MeshInstance, buffer: *mut c_void, size: *mut u32) -> i32>,
 	pub MeshInstance_SetMeshData: extern fn(*mut GGD_MeshInstance, mesh: *mut GGD_MeshData, index: u32),
-	pub MeshInstance_SetImageData: extern fn(*mut GGD_MeshInstance, image: *mut GGD_ImageData, layer: GGMaterialLayer),
+	pub MeshInstance_SetImageData: extern fn(*mut GGD_MeshInstance, image: *mut GGD_ImageData, layer: i32),
 	pub MeshInstance_SetAnimation: extern fn(*mut GGD_MeshInstance, firstIndex: u32, lastIndex: u32, frameRate: f32),
 	pub MeshInstance_SetTransform: extern fn(*mut GGD_MeshInstance, pose: *const GGTransform),
 	pub MeshInstance_SetBoneTransform: extern fn(*mut GGD_MeshInstance, bone: u32, pose: *const GGTransform),
 
 	pub Camera_Alloc: extern fn() -> *mut GGD_Camera,
 	pub Camera_Free: unsafe extern fn(*mut GGD_Camera),
-	pub Camera_SetPerspective: unsafe extern fn(*mut GGD_Camera, aspect: f32, fovx: f32, zNear: f32, zFar: f32),
+	pub Camera_SetPerspective: unsafe extern fn(*mut GGD_Camera, aspect: f32, fovy: f32, zNear: f32, zFar: f32),
 	pub Camera_SetOrthographic: Option<extern fn(*mut GGD_Camera, w: f32, h: f32, zNear: f32, zFar: f32)>,
 	pub Camera_SetParabolic: Option<extern fn(*mut GGD_Camera, scale: f32)>,
 	pub Camera_SetMeshGroup: extern fn(*mut GGD_Camera, *mut GGD_MeshGroup),

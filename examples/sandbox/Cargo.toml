@@ -9,6 +9,3 @@ cgmath = "0.17.0"
 nice-engine = { path = "../.." }
 simplelog = "0.5"
 winit = "0.19.1"
-
-[profile.release]
-lto = true
