@@ -1,7 +1,10 @@
 use crate::game_graph::*;
 use libc::c_void;
 use nice_engine::{camera::Camera, mesh_data::MeshData, surface::Surface};
-use std::{os::raw::c_char, sync::Arc};
+use std::{
+	os::raw::{c_char, c_ulong},
+	sync::Arc,
+};
 
 #[allow(non_camel_case_types)]
 pub type GGD_Camera = Camera;
@@ -153,6 +156,17 @@ pub struct GGD_WindowInfo_X11 {
 	pub surface: Surface,
 }
 
+#[cfg(windows)]
 type HINSTANCE = *mut c_void;
+#[cfg(windows)]
 type HWND = *mut c_void;
+#[cfg(windows)]
 type HDC = *mut c_void;
+#[cfg(unix)]
+type wl_display = c_void;
+#[cfg(unix)]
+type wl_surface = c_void;
+#[cfg(unix)]
+type Display = c_void;
+#[cfg(unix)]
+type Surface = c_ulong;
