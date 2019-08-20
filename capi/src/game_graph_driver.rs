@@ -167,6 +167,8 @@ type wl_display = c_void;
 #[cfg(unix)]
 type wl_surface = c_void;
 #[cfg(unix)]
+type wl_shell_surface = c_void;
+#[cfg(unix)]
 type Display = c_void;
 #[cfg(unix)]
 type Surface = c_ulong;
