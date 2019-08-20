@@ -1,6 +1,6 @@
 use crate::game_graph::*;
 use libc::c_void;
-use nice_engine::{camera::Camera, mesh_data::MeshData, surface::Surface};
+use nice_engine::{camera::Camera, mesh_data::MeshData, surface::Surface as NiceSurface};
 use std::{
 	os::raw::{c_char, c_ulong},
 	sync::Arc,
@@ -116,7 +116,7 @@ pub struct GGD_RenderEngine {
 }
 
 #[allow(non_camel_case_types)]
-pub type GGD_Window = Surface;
+pub type GGD_Window = NiceSurface;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(C)]
