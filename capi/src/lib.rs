@@ -38,8 +38,6 @@ pub unsafe extern fn GGD_DriverMain(X: *mut GGD_DriverContext) -> GGDriverStatus
 	let X = &*X;
 
 	if X.APIVersion == GGD_API_VERSION {
-		(X.RegisterRenderEngine)(&mut RENDER_ENGINE);
-
 		let name = if X.GameName != null() {
 			Some(str::from_utf8_unchecked(slice::from_raw_parts(X.GameName as _, strlen(X.GameName))))
 		} else {
@@ -47,6 +45,8 @@ pub unsafe extern fn GGD_DriverMain(X: *mut GGD_DriverContext) -> GGDriverStatus
 		};
 		let version = Some(Version::from_vulkan_version(X.GameVersion as u32));
 		ctx::init(name, version);
+
+		(X.RegisterRenderEngine)(&RENDER_ENGINE);
 
 		GGD_STATUS_DRIVER_READY
 	} else {

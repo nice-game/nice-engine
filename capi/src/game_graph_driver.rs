@@ -12,8 +12,8 @@ pub struct GGD_DriverContext {
 	pub APIVersion: u64,
 	pub GameVersion: u64,
 	pub GameName: *const c_char,
-	pub RegisterRenderEngine: extern fn(*mut GGD_RenderEngine),
-	pub RegisterPhysicsEngine: extern fn(*mut GGD_PhysicsEngine),
+	pub RegisterRenderEngine: extern fn(*const GGD_RenderEngine),
+	pub RegisterPhysicsEngine: extern fn(*const GGD_PhysicsEngine),
 }
 
 #[allow(non_camel_case_types)]
@@ -37,7 +37,7 @@ pub struct GGD_PhysicsEngine {
 	// TODO: implement physics engine
 }
 
-#[allow(non_snake_case)]
+#[allow(non_snake_case, non_camel_case_types)]
 #[repr(C)]
 pub struct GGD_RenderEngine {
 	pub Name: *const c_char,
