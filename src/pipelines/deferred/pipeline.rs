@@ -2,7 +2,7 @@ use super::{
 	context::DeferredPipelineContextInner, geom_fshader, geom_vshader, light_fshader, light_vshader, swap_fshader,
 	swap_vshader, Vert2D, DEPTH_FORMAT, DIFFUSE_FORMAT, LIGHT_FORMAT, NORMAL_FORMAT, POSITION_FORMAT,
 };
-use crate::{camera::Camera, direct_light::DirectLight, mesh::Mesh, mesh_data, pipelines::Pipeline};
+use crate::{camera::Camera, direct_light::DirectLight, mesh::Mesh, mesh_data::{Pntl_32F, IndexBuffer}, pipelines::Pipeline};
 use std::sync::Arc;
 use vulkano::{
 	buffer::BufferAccess,
@@ -14,6 +14,7 @@ use vulkano::{
 	instance::QueueFamily,
 	pipeline::{
 		blend::{AttachmentBlend, BlendFactor, BlendOp},
+		input_assembly::PrimitiveTopology,
 		viewport::Viewport,
 		GraphicsPipeline, GraphicsPipelineAbstract,
 	},
@@ -21,7 +22,8 @@ use vulkano::{
 
 pub(super) struct DeferredPipeline {
 	ctx: Arc<DeferredPipelineContextInner>,
-	geom_pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
+	geom_pipeline_soup: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
+	geom_pipeline_strip: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
 	light_pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
 	swap_pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
 	framebuffers: Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
@@ -34,8 +36,8 @@ impl DeferredPipeline {
 		images: Vec<Arc<dyn ImageViewAccess + Send + Sync>>,
 		dimensions: [u32; 2],
 	) -> Self {
-		let geom_pipeline =
-			create_geom_pipeline(&ctx.geom_vshader, &ctx.geom_fshader, ctx.render_pass.clone(), dimensions);
+		let (geom_pipeline_soup, geom_pipeline_strip) =
+			create_geom_pipelines(&ctx.geom_vshader, &ctx.geom_fshader, &ctx.render_pass, dimensions);
 		let light_pipeline =
 			create_light_pipeline(&ctx.light_vshader, &ctx.light_fshader, ctx.render_pass.clone(), dimensions);
 		let swap_pipeline =
@@ -45,7 +47,7 @@ impl DeferredPipeline {
 		let framebuffers = create_framebuffers(&ctx.render_pass, &gbuffers, images);
 		let gbuffers_desc = make_gbuffers_desc(ctx.light_layout_desc.clone(), &gbuffers);
 
-		Self { ctx, geom_pipeline, swap_pipeline, light_pipeline, framebuffers, gbuffers_desc, dimensions }
+		Self { ctx, geom_pipeline_soup, geom_pipeline_strip, swap_pipeline, light_pipeline, framebuffers, gbuffers_desc, dimensions }
 	}
 }
 impl Pipeline for DeferredPipeline {
@@ -84,16 +86,35 @@ impl Pipeline for DeferredPipeline {
 		for mesh in meshes {
 			let mesh_data = mesh.mesh_data().as_ref().unwrap();
 			for mat in mesh.texture_descs() {
-				command_buffer = command_buffer
-					.draw_indexed(
-						self.geom_pipeline.clone(),
-						&Default::default(),
-						vec![mesh_data.vertices().clone()],
-						mesh_data.indices().clone().into_buffer_slice().slice(mat.range().clone()).unwrap(),
-						mat.tex1().clone(),
-						make_pc(mesh),
-					)
-					.unwrap();
+				let pipeline = match mesh_data.topology() {
+					PrimitiveTopology::TriangleList => self.geom_pipeline_soup.clone(),
+					PrimitiveTopology::TriangleStrip => self.geom_pipeline_strip.clone(),
+					_ => unimplemented!(),
+				};
+				match mesh_data.indices() {
+					IndexBuffer::U16(buf) =>
+						command_buffer = command_buffer
+							.draw_indexed(
+								pipeline,
+								&Default::default(),
+								vec![mesh_data.vertices().clone()],
+								buf.clone().into_buffer_slice().slice(mat.range().clone()).unwrap(),
+								mat.tex1().clone(),
+								make_pc(mesh),
+							)
+							.unwrap(),
+					IndexBuffer::U32(buf) =>
+						command_buffer = command_buffer
+							.draw_indexed(
+								pipeline,
+								&Default::default(),
+								vec![mesh_data.vertices().clone()],
+								buf.clone().into_buffer_slice().slice(mat.range().clone()).unwrap(),
+								mat.tex1().clone(),
+								make_pc(mesh),
+							)
+							.unwrap(),
+				}
 			}
 		}
 
@@ -144,12 +165,15 @@ impl Pipeline for DeferredPipeline {
 	}
 
 	fn resize(&mut self, images: Vec<Arc<dyn ImageViewAccess + Send + Sync>>, dimensions: [u32; 2]) {
-		self.geom_pipeline = create_geom_pipeline(
+		let (geom_pipeline_soup, geom_pipeline_strip) = create_geom_pipelines(
 			&self.ctx.geom_vshader,
 			&self.ctx.geom_fshader,
-			self.ctx.render_pass.clone(),
+			&self.ctx.render_pass,
 			dimensions,
 		);
+		self.geom_pipeline_soup = geom_pipeline_soup;
+		self.geom_pipeline_strip = geom_pipeline_strip;
+
 		self.light_pipeline = create_light_pipeline(
 			&self.ctx.light_vshader,
 			&self.ctx.light_fshader,
@@ -221,23 +245,36 @@ struct GBuffers {
 	light: Arc<dyn ImageViewAccess + Send + Sync>,
 }
 
+fn create_geom_pipelines(
+	vshader: &geom_vshader::Shader,
+	fshader: &geom_fshader::Shader,
+	render_pass: &Arc<dyn RenderPassAbstract + Send + Sync>,
+	dimensions: [u32; 2],
+) -> (Arc<dyn GraphicsPipelineAbstract + Send + Sync>, Arc<dyn GraphicsPipelineAbstract + Send + Sync>) {
+	(
+		create_geom_pipeline(vshader, fshader, render_pass, dimensions, PrimitiveTopology::TriangleList),
+		create_geom_pipeline(vshader, fshader, render_pass, dimensions, PrimitiveTopology::TriangleStrip),
+	)
+}
+
 fn create_geom_pipeline(
 	vshader: &geom_vshader::Shader,
 	fshader: &geom_fshader::Shader,
-	render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
+	render_pass: &Arc<dyn RenderPassAbstract + Send + Sync>,
 	dimensions: [u32; 2],
+	topology: PrimitiveTopology,
 ) -> Arc<dyn GraphicsPipelineAbstract + Send + Sync> {
 	let dimensions = [dimensions[0] as f32, dimensions[1] as f32];
 	let device = render_pass.device().clone();
 	Arc::new(
 		GraphicsPipeline::start()
-			.vertex_input_single_buffer::<mesh_data::Pntl_32F>()
+			.vertex_input_single_buffer::<Pntl_32F>()
 			.vertex_shader(vshader.main_entry_point(), ())
 			.fragment_shader(fshader.main_entry_point(), ())
-			.triangle_list()
+			.primitive_topology(topology)
 			.cull_mode_back()
 			.viewports(vec![Viewport { origin: [0.0, 0.0], dimensions, depth_range: 0.0..1.0 }])
-			.render_pass(Subpass::from(render_pass, 0).unwrap())
+			.render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
 			.depth_stencil_simple_depth()
 			.build(device)
 			.unwrap(),

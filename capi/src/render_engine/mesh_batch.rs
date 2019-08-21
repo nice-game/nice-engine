@@ -1,4 +1,4 @@
-use crate::game_graph_driver::GGD_MeshGroup;
+use crate::game_graph_driver::{GGD_ImageData, GGD_MeshGroup};
 
 #[allow(non_snake_case)]
 pub extern fn MeshGroup_Alloc() -> *mut GGD_MeshGroup {
@@ -9,3 +9,6 @@ pub extern fn MeshGroup_Alloc() -> *mut GGD_MeshGroup {
 pub unsafe extern fn MeshGroup_Free(this: *mut GGD_MeshGroup) {
 	Box::from_raw(this);
 }
+
+#[allow(non_snake_case)]
+pub extern fn MeshGroup_SetSky(_this: *mut GGD_MeshGroup, _img: *mut GGD_ImageData) {}

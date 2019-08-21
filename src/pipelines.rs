@@ -1,5 +1,4 @@
 pub(crate) mod deferred;
-pub(crate) mod forward;
 
 use crate::{camera::Camera, direct_light::DirectLight, mesh::Mesh};
 use std::sync::Arc;

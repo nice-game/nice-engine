@@ -11,6 +11,7 @@ use std::{
 use vulkano::{
 	buffer::{BufferUsage, CpuAccessibleBuffer, ImmutableBuffer},
 	device::Queue,
+	pipeline::input_assembly::PrimitiveTopology,
 	sync::GpuFuture,
 };
 
@@ -143,7 +144,8 @@ pub(crate) fn from_nice_model(
 		});
 	}
 
-	(MeshData::from_bufs(vertices, indices), mats, vertices_future.join(indices_future))
+	let mesh_data = MeshData::from_bufs_u32(vertices, indices, PrimitiveTopology::TriangleList);
+	(mesh_data, mats, vertices_future.join(indices_future))
 }
 
 pub(crate) struct MaterialInfo {

@@ -12,7 +12,10 @@ use nice_engine::{
 	GpuFuture,
 };
 use std::{slice, sync::Arc};
-use vulkano::buffer::{BufferAccess, BufferUsage, ImmutableBuffer, TypedBufferAccess};
+use vulkano::{
+	buffer::{BufferAccess, BufferUsage, ImmutableBuffer},
+	pipeline::input_assembly::PrimitiveTopology,
+};
 
 #[allow(non_snake_case)]
 pub unsafe extern fn MeshData_Alloc_Polygon(
@@ -37,20 +40,28 @@ pub unsafe extern fn MeshData_Alloc_Polygon(
 		VFMT_UNDEFINED => unimplemented!(),
 	};
 
-	let (indices, indices_future): (Arc<dyn TypedBufferAccess<Content = [u32]> + Send + Sync>, _) = match indexFormat {
-		IFMT_SOUP_16U => unimplemented!(),
-		IFMT_SOUP_32U => unimplemented!(),
-		IFMT_STRIP_16U => unimplemented!(),
-		IFMT_STRIP_32U => {
+	let topology = match indexFormat {
+		IFMT_SOUP_16U | IFMT_SOUP_32U => PrimitiveTopology::TriangleList,
+		IFMT_STRIP_16U | IFMT_STRIP_32U => PrimitiveTopology::TriangleStrip,
+		IFMT_UNDEFINED => unimplemented!(),
+	};
+
+	let (mesh_data, indices_future) = match indexFormat {
+		IFMT_SOUP_16U | IFMT_STRIP_16U => {
+			let buffer = slice::from_raw_parts(indexBuffer as *const u16, indexCount as usize).iter().cloned();
+			let (indices, indices_future) =
+				ImmutableBuffer::from_iter(buffer, BufferUsage::vertex_buffer(), queue.clone()).unwrap();
+			(MeshData::from_bufs_u16(vertices, indices, topology), indices_future)
+		},
+		IFMT_SOUP_32U | IFMT_STRIP_32U => {
 			let buffer = slice::from_raw_parts(indexBuffer as *const u32, indexCount as usize).iter().cloned();
 			let (indices, indices_future) =
 				ImmutableBuffer::from_iter(buffer, BufferUsage::vertex_buffer(), queue.clone()).unwrap();
-			(indices, indices_future)
+			(MeshData::from_bufs_u32(vertices, indices, topology), indices_future)
 		},
 		IFMT_UNDEFINED => unimplemented!(),
 	};
 
-	let mesh_data = MeshData::from_bufs(vertices, indices);
 	vertices_future.join(indices_future).then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 	Box::into_raw(Box::new(mesh_data))
 }

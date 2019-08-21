@@ -33,7 +33,7 @@ mod ctx {
 #[allow(non_snake_case)]
 #[no_mangle]
 pub unsafe extern fn GGD_DriverMain(X: *mut GGD_DriverContext) -> GGDriverStatus {
-	panic::set_hook(Box::new(|info| println!("{:?}", info)));
+	panic::set_hook(Box::new(|info| println!("{}", info)));
 
 	let X = &*X;
 

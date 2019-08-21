@@ -43,11 +43,10 @@ pub const RENDER_ENGINE: GGD_RenderEngine = GGD_RenderEngine {
 
 	MeshGroup_Alloc,
 	MeshGroup_Free,
+	MeshGroup_SetSky,
 
 	MeshInstance_Alloc,
 	MeshInstance_Free,
-	MeshInstance_SetCacheData: None,
-	MeshInstance_GetCacheData: None,
 	MeshInstance_SetMeshData,
 	MeshInstance_SetImageData,
 	MeshInstance_SetAnimation,

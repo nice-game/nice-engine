@@ -13,7 +13,7 @@ pub mod window;
 pub mod world;
 
 use crate::{
-	pipelines::{deferred::DeferredPipelineDef, forward::ForwardPipelineDef, PipelineContext, PipelineDef},
+	pipelines::{deferred::DeferredPipelineDef, PipelineContext, PipelineDef},
 	resources::Resources,
 };
 use log::info;
@@ -128,8 +128,7 @@ impl Context {
 		let queue = queues.next().unwrap();
 
 		let (deferred_def, deferred_def_future) = DeferredPipelineDef::make_context(&device, &queue);
-		let (forward_def, forward_def_future) = ForwardPipelineDef::make_context(&device, &queue);
-		let pipeline_ctxs = vec![deferred_def, forward_def];
+		let pipeline_ctxs = vec![deferred_def];
 		let active_pipeline = 0;
 
 		let world = World::new();
@@ -149,7 +148,7 @@ impl Context {
 				world,
 				resources,
 			}),
-			deferred_def_future.join(forward_def_future).join(resources_future),
+			deferred_def_future.join(resources_future),
 		))
 	}
 
