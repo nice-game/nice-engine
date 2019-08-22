@@ -102,10 +102,10 @@ pub struct GGD_RenderEngine {
 
 	pub MeshInstance_Alloc: unsafe extern fn(*mut GGD_MeshGroup) -> *mut GGD_MeshInstance,
 	pub MeshInstance_Free: unsafe extern fn(*mut GGD_MeshInstance),
-	pub MeshInstance_SetMeshData: extern fn(*mut GGD_MeshInstance, mesh: *mut GGD_MeshData, index: u32),
+	pub MeshInstance_SetMeshData: unsafe extern fn(*mut GGD_MeshInstance, mesh: *mut GGD_MeshData, index: u32),
 	pub MeshInstance_SetImageData: extern fn(*mut GGD_MeshInstance, image: *mut GGD_ImageData, layer: i32),
 	pub MeshInstance_SetAnimation: extern fn(*mut GGD_MeshInstance, firstIndex: u32, lastIndex: u32, frameRate: f32),
-	pub MeshInstance_SetTransform: extern fn(*mut GGD_MeshInstance, pose: *const GGTransform),
+	pub MeshInstance_SetTransform: unsafe extern fn(*mut GGD_MeshInstance, pose: *const GGTransform),
 	pub MeshInstance_SetBoneTransform: extern fn(*mut GGD_MeshInstance, bone: u32, pose: *const GGTransform),
 
 	pub Camera_Alloc: extern fn() -> *mut GGD_Camera,

@@ -85,25 +85,7 @@ impl MeshInner {
 		&mut self.transform
 	}
 
-	pub(crate) fn mesh_data(&self) -> &Option<Arc<MeshData>> {
-		&self.mesh_data
-	}
-
-	pub(crate) fn refresh(&mut self) {
-		for mat in &mut self.texture_descs {
-			if mat.tex1_tex.image().inner().internal_object() != mat.tex1.image(0).unwrap().0.inner().internal_object()
-			{
-				mat.tex1 = make_desc_set(
-					self.layout_desc.clone(),
-					mat.tex1_tex.image().clone(),
-					self.lightmap.as_ref(),
-					self.sampler.clone(),
-				);
-			}
-		}
-	}
-
-	pub(crate) fn set_mesh_data(&mut self, mesh_data: Option<Arc<MeshData>>) {
+	pub fn set_mesh_data(&mut self, mesh_data: Option<Arc<MeshData>>) {
 		self.mesh_data = mesh_data;
 		if let Some(data) = self.mesh_data.as_ref() {
 			self.texture_descs = vec![MaterialDesc::new(
@@ -127,6 +109,24 @@ impl MeshInner {
 				0,
 				[0; 3],
 			)];
+		}
+	}
+
+	pub(crate) fn mesh_data(&self) -> &Option<Arc<MeshData>> {
+		&self.mesh_data
+	}
+
+	pub(crate) fn refresh(&mut self) {
+		for mat in &mut self.texture_descs {
+			if mat.tex1_tex.image().inner().internal_object() != mat.tex1.image(0).unwrap().0.inner().internal_object()
+			{
+				mat.tex1 = make_desc_set(
+					self.layout_desc.clone(),
+					mat.tex1_tex.image().clone(),
+					self.lightmap.as_ref(),
+					self.sampler.clone(),
+				);
+			}
 		}
 	}
 
