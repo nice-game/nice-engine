@@ -9,7 +9,7 @@ pub struct Camera {
 }
 impl Camera {
 	pub fn new() -> Self {
-		Camera { proj: Vector4::zero(), transform: Transform::default(), exposure: 1.0 }
+		Self { proj: Vector4::zero(), transform: Transform::default(), exposure: 1.0 }
 	}
 
 	pub fn set_perspective(&mut self, aspect: f32, fovx: f32, znear: f32, zfar: f32) {
@@ -26,6 +26,11 @@ impl Camera {
 
 	pub(crate) fn projection(&self) -> Vector4<f32> {
 		self.proj
+	}
+}
+impl Default for Camera {
+	fn default() -> Self {
+		Self::new()
 	}
 }
 

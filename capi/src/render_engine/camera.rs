@@ -2,11 +2,11 @@ use crate::{
 	game_graph::GGTransform,
 	game_graph_driver::{GGD_Camera, GGD_MeshGroup},
 };
-use nice_engine::camera::Camera;
+use std::sync::Arc;
 
 #[allow(non_snake_case)]
 pub extern fn Camera_Alloc() -> *mut GGD_Camera {
-	Box::into_raw(Box::new(Camera::new()))
+	Box::into_raw(Box::new(Arc::default()))
 }
 
 #[allow(non_snake_case)]
@@ -16,8 +16,8 @@ pub unsafe extern fn Camera_Free(this: *mut GGD_Camera) {
 
 #[allow(non_snake_case)]
 pub unsafe extern fn Camera_SetPerspective(this: *mut GGD_Camera, aspect: f32, fovx: f32, zNear: f32, zFar: f32) {
-	let this_ref = &mut *this;
-	this_ref.set_perspective(aspect, fovx, zNear, zFar);
+	let this = &mut *this;
+	this.lock().unwrap().set_perspective(aspect, fovx, zNear, zFar);
 }
 
 #[allow(non_snake_case)]

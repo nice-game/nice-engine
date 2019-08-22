@@ -59,10 +59,19 @@ pub unsafe extern fn Window_Resize(this: *mut GGD_Window, w: u32, h: u32) {
 }
 
 #[allow(non_snake_case)]
-pub extern fn Window_SetCamera(_dst: *mut GGD_Window, _camera: *mut GGD_Camera) {}
+pub unsafe extern fn Window_SetCamera(this: *mut GGD_Window, camera: *mut GGD_Camera) {
+	let this = &mut *this;
+	let camera = &mut *camera;
+
+	this.set_camera(camera.clone());
+}
 
 #[allow(non_snake_case)]
-pub extern fn Window_SetOverlay(_dst: *mut GGD_Window, _overlay: *mut GGD_ImageData) {}
+pub extern fn Window_SetOverlay(_this: *mut GGD_Window, _overlay: *mut GGD_ImageData) {}
 
 #[allow(non_snake_case)]
-pub extern fn Window_Draw(_this: *mut GGD_Window) {}
+pub unsafe extern fn Window_Draw(this: *mut GGD_Window) {
+	let this = &mut *this;
+
+	this.draw();
+}

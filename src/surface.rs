@@ -1,5 +1,8 @@
 use crate::{camera::Camera, pipelines::Pipeline, world::World, Context};
-use std::{os::raw::c_ulong, sync::Arc};
+use std::{
+	os::raw::c_ulong,
+	sync::{Arc, Mutex},
+};
 use vulkano::{
 	device::{Device, Queue},
 	format::Format,
@@ -20,6 +23,7 @@ pub struct Surface<W: Send + Sync + 'static = ()> {
 	pipeline: Box<dyn Pipeline>,
 	prev_frame_end: Option<Arc<FenceSignalFuture<Box<dyn GpuFuture>>>>,
 	world: Arc<World>,
+	camera: Arc<Mutex<Camera>>,
 }
 impl<W: Send + Sync + 'static> Surface<W> {
 	#[cfg(feature = "window")]
@@ -30,7 +34,15 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		Self::new_inner(ctx, surface)
 	}
 
-	pub fn draw(&mut self, cam: &Camera) {
+	pub fn camera(&self) -> &Arc<Mutex<Camera>> {
+		&self.camera
+	}
+
+	pub fn set_camera(&mut self, camera: Arc<Mutex<Camera>>) {
+		self.camera = camera;
+	}
+
+	pub fn draw(&mut self) {
 		let (image_num, acquire_future) = match acquire_next_image(self.swapchain.clone(), None) {
 			Ok(r) => r,
 			Err(AcquireError::OutOfDate) => {
@@ -51,16 +63,14 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		} else {
 			Box::new(acquire_future)
 		};
-		let future = (Box::new(
-			before_execute
-				.then_execute(
-					self.queue.clone(),
-					self.pipeline.draw(image_num, self.queue.family(), cam, &*meshes, &*lights),
-				)
-				.unwrap()
-				.then_swapchain_present(self.queue.clone(), self.swapchain.clone(), image_num),
-		) as Box<dyn GpuFuture>)
-			.then_signal_fence_and_flush();
+		let before_execute = before_execute
+			.then_execute(
+				self.queue.clone(),
+				self.pipeline.draw(image_num, self.queue.family(), &self.camera.lock().unwrap(), &meshes, &lights),
+			)
+			.unwrap()
+			.then_swapchain_present(self.queue.clone(), self.swapchain.clone(), image_num);
+		let future = (Box::new(before_execute) as Box<dyn GpuFuture>).then_signal_fence_and_flush();
 		if let Some(prev_frame_end) = &mut self.prev_frame_end {
 			prev_frame_end.wait(None).unwrap();
 			prev_frame_end.cleanup_finished();
@@ -133,8 +143,9 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		let prev_frame_end = None;
 
 		let world = ctx.world().clone();
+		let camera = Arc::default();
 
-		Self { device, queue, surface, swapchain, pipeline, prev_frame_end, world }
+		Self { device, queue, surface, swapchain, pipeline, prev_frame_end, world, camera }
 	}
 }
 impl Surface<()> {

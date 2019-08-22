@@ -1,3 +1,4 @@
+use std::sync::Mutex;
 use crate::game_graph::*;
 use libc::c_void;
 use nice_engine::{camera::Camera, mesh_data::MeshData, surface::Surface as NiceSurface};
@@ -6,7 +7,7 @@ use std::os::raw::c_ulong;
 use std::{os::raw::c_char, sync::Arc};
 
 #[allow(non_camel_case_types)]
-pub type GGD_Camera = Camera;
+pub type GGD_Camera = Arc<Mutex<Camera>>;
 
 #[allow(non_snake_case)]
 #[repr(C)]
@@ -52,9 +53,9 @@ pub struct GGD_RenderEngine {
 	pub Window_Free: unsafe extern fn(*mut GGD_Window),
 	pub Window_IsValid: extern fn(*mut GGD_Window) -> i32,
 	pub Window_Resize: unsafe extern fn(*mut GGD_Window, w: u32, h: u32),
-	pub Window_SetCamera: extern fn(dst: *mut GGD_Window, camera: *mut GGD_Camera),
+	pub Window_SetCamera: unsafe extern fn(dst: *mut GGD_Window, camera: *mut GGD_Camera),
 	pub Window_SetOverlay: extern fn(dst: *mut GGD_Window, overlay: *mut GGD_ImageData),
-	pub Window_Draw: extern fn(*mut GGD_Window),
+	pub Window_Draw: unsafe extern fn(*mut GGD_Window),
 
 	pub MeshData_Alloc_Polygon: unsafe extern fn(
 		vertexBuffer: *const c_void,
