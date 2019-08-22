@@ -4,6 +4,7 @@ mod texture;
 use crate::{
 	mesh::{Material, Mesh},
 	mesh_data::MeshData,
+	mesh_group::MeshGroup,
 	texture::{ImmutableTexture, Texture},
 	threads::FILE_THREAD,
 };
@@ -26,7 +27,9 @@ use vulkano::{
 pub struct Resources {
 	queue: Arc<Queue>,
 	layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
+	// TODO: move to Context
 	sampler: Arc<Sampler>,
+	// TODO: move to Context
 	white_pixel: ImmutableTexture,
 	meshes: HashMap<PathBuf, Arc<Model>>,
 	textures: HashMap<PathBuf, Arc<TextureResource>>,
@@ -66,7 +69,7 @@ impl Resources {
 		(Self { queue, layout_desc, sampler, white_pixel, meshes, textures }, white_pixel_future)
 	}
 
-	pub fn get_model(&mut self, path: impl AsRef<Path> + Clone + Send + 'static) -> Mesh {
+	pub fn get_model(&mut self, mesh_group: &Arc<MeshGroup>, path: impl AsRef<Path> + Clone + Send + 'static) -> Mesh {
 		let model = self.meshes.get(path.as_ref()).cloned().unwrap_or_else(|| {
 			let (mesh_data, mats, mesh_data_future) = model::from_nice_model(&self.queue, path.clone());
 			mesh_data_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
@@ -87,9 +90,13 @@ impl Resources {
 			model
 		});
 
-		let mut mesh = Mesh::new(self.layout_desc.clone(), self.white_pixel.clone(), self.sampler.clone());
-		mesh.set_mesh_data(Some(model.mesh_data.clone()));
-		mesh.set_materials(&model.mats);
+		let mesh =
+			Mesh::new_inner(mesh_group, self.layout_desc.clone(), self.white_pixel.clone(), self.sampler.clone());
+		{
+			let mut mesh_inner = mesh.lock().unwrap();
+			mesh_inner.set_mesh_data(Some(model.mesh_data.clone()));
+			mesh_inner.set_materials(&model.mats);
+		}
 		mesh
 	}
 
@@ -100,6 +107,14 @@ impl Resources {
 			self.textures.insert(path.as_ref().to_owned(), tex.clone());
 			tex
 		})
+	}
+
+	pub(crate) fn sampler(&self) -> &Arc<Sampler> {
+		&self.sampler
+	}
+
+	pub(crate) fn white_pixel(&self) -> &ImmutableTexture {
+		&self.white_pixel
 	}
 }
 

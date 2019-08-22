@@ -1,9 +1,17 @@
 use crate::{
 	mesh_data::MeshData,
+	mesh_group::MeshGroup,
 	texture::{ImmutableTexture, TargetTexture, Texture},
 	transform::Transform,
+	Context,
 };
-use std::{ops::Range, sync::Arc};
+use std::{
+	ops::Range,
+	sync::{
+		atomic::{AtomicUsize, Ordering},
+		Arc, LockResult, Mutex, MutexGuard,
+	},
+};
 use vulkano::{
 	descriptor::{descriptor_set::PersistentDescriptorSet, DescriptorSet, PipelineLayoutAbstract},
 	image::ImageViewAccess,
@@ -11,7 +19,55 @@ use vulkano::{
 	VulkanObject,
 };
 
+static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+
 pub struct Mesh {
+	id: usize,
+	mesh_group: Arc<MeshGroup>,
+	inner: Arc<Mutex<MeshInner>>,
+}
+impl Mesh {
+	pub fn new(ctx: &Context, mesh_group: &Arc<MeshGroup>) -> Self {
+		let layout_desc = ctx.pipeline_ctx().layout_desc().clone();
+		let white_pixel = ctx.resources().lock().unwrap().white_pixel().clone();
+		let sampler = ctx.resources().lock().unwrap().sampler().clone();
+		Self::new_inner(mesh_group, layout_desc, white_pixel, sampler)
+	}
+
+	pub(crate) fn new_inner(
+		mesh_group: &Arc<MeshGroup>,
+		layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
+		white_pixel: ImmutableTexture,
+		sampler: Arc<Sampler>,
+	) -> Self {
+		let mesh_group = mesh_group.clone();
+		let texture_descs = vec![];
+		let inner = Arc::new(Mutex::new(MeshInner {
+			layout_desc,
+			white_pixel,
+			sampler,
+			mesh_data: None,
+			transform: Transform::default(),
+			texture_descs,
+			lightmap: None,
+		}));
+
+		let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+		mesh_group.lock().unwrap().insert(id, inner.clone());
+		Self { id, mesh_group, inner }
+	}
+
+	pub fn lock(&self) -> LockResult<MutexGuard<MeshInner>> {
+		self.inner.lock()
+	}
+}
+impl Drop for Mesh {
+	fn drop(&mut self) {
+		self.mesh_group.lock().unwrap().remove(&self.id);
+	}
+}
+
+pub struct MeshInner {
 	layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
 	white_pixel: ImmutableTexture,
 	sampler: Arc<Sampler>,
@@ -20,24 +76,7 @@ pub struct Mesh {
 	texture_descs: Vec<MaterialDesc>,
 	lightmap: Option<TargetTexture>,
 }
-impl Mesh {
-	pub(crate) fn new(
-		layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
-		white_pixel: ImmutableTexture,
-		sampler: Arc<Sampler>,
-	) -> Self {
-		let texture_descs = vec![];
-		Self {
-			layout_desc,
-			white_pixel,
-			sampler,
-			mesh_data: None,
-			transform: Transform::default(),
-			texture_descs,
-			lightmap: None,
-		}
-	}
-
+impl MeshInner {
 	pub fn transform(&self) -> &Transform {
 		&self.transform
 	}

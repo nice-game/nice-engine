@@ -2,6 +2,7 @@ pub mod camera;
 pub mod direct_light;
 pub mod mesh;
 pub mod mesh_data;
+pub mod mesh_group;
 pub mod pipelines;
 pub mod resources;
 pub mod surface;
@@ -43,9 +44,9 @@ pub struct Context {
 	debug_callback: DebugCallback,
 	device: Arc<Device>,
 	queue: Arc<Queue>,
-	pipeline_ctxs: Vec<Box<dyn PipelineContext>>,
-	active_pipeline: usize,
+	pipeline_ctx: Box<dyn PipelineContext>,
 	world: Arc<World>,
+	// TODO: move mutex inside Resources
 	resources: Mutex<Resources>,
 }
 impl Context {
@@ -128,12 +129,11 @@ impl Context {
 		let queue = queues.next().unwrap();
 
 		let (deferred_def, deferred_def_future) = DeferredPipelineDef::make_context(&device, &queue);
-		let pipeline_ctxs = vec![deferred_def];
-		let active_pipeline = 0;
+		let pipeline_ctx = deferred_def;
 
 		let world = World::new();
 
-		let (resources, resources_future) = Resources::new(queue.clone(), pipeline_ctxs[0].layout_desc().clone());
+		let (resources, resources_future) = Resources::new(queue.clone(), pipeline_ctx.layout_desc().clone());
 		let resources = Mutex::new(resources);
 
 		Ok((
@@ -143,8 +143,7 @@ impl Context {
 				debug_callback,
 				device,
 				queue,
-				pipeline_ctxs,
-				active_pipeline,
+				pipeline_ctx,
 				world,
 				resources,
 			}),
@@ -169,7 +168,7 @@ impl Context {
 	}
 
 	fn pipeline_ctx(&self) -> &dyn PipelineContext {
-		self.pipeline_ctxs[self.active_pipeline].as_ref()
+		self.pipeline_ctx.as_ref()
 	}
 }
 

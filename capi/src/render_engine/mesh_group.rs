@@ -1,8 +1,9 @@
 use crate::game_graph_driver::{GGD_ImageData, GGD_MeshGroup};
+use nice_engine::mesh_group::MeshGroup;
 
 #[allow(non_snake_case)]
 pub extern fn MeshGroup_Alloc() -> *mut GGD_MeshGroup {
-	Box::into_raw(Box::new(GGD_MeshGroup {}))
+	Box::into_raw(Box::new(MeshGroup::new()))
 }
 
 #[allow(non_snake_case)]

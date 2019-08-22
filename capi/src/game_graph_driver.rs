@@ -1,10 +1,13 @@
-use std::sync::Mutex;
+use nice_engine::mesh::Mesh;
 use crate::game_graph::*;
 use libc::c_void;
-use nice_engine::{camera::Camera, mesh_data::MeshData, surface::Surface as NiceSurface};
+use nice_engine::{camera::Camera, mesh_data::MeshData, mesh_group::MeshGroup, surface::Surface as NiceSurface};
 #[cfg(unix)]
 use std::os::raw::c_ulong;
-use std::{os::raw::c_char, sync::Arc};
+use std::{
+	os::raw::c_char,
+	sync::{Arc, Mutex},
+};
 
 #[allow(non_camel_case_types)]
 pub type GGD_Camera = Arc<Mutex<Camera>>;
@@ -26,13 +29,13 @@ pub struct GGD_FontData {}
 pub struct GGD_ImageData {}
 
 #[allow(non_camel_case_types)]
-pub struct GGD_MeshGroup {}
+pub type GGD_MeshGroup = Arc<MeshGroup>;
 
 #[allow(non_camel_case_types)]
 pub type GGD_MeshData = Arc<MeshData>;
 
 #[allow(non_camel_case_types)]
-pub struct GGD_MeshInstance {}
+pub type GGD_MeshInstance = Mesh;
 
 #[allow(non_snake_case)]
 #[repr(C)]
@@ -97,7 +100,7 @@ pub struct GGD_RenderEngine {
 	pub MeshGroup_Free: unsafe extern fn(*mut GGD_MeshGroup),
 	pub MeshGroup_SetSky: extern fn(*mut GGD_MeshGroup, *mut GGD_ImageData),
 
-	pub MeshInstance_Alloc: extern fn(*mut GGD_MeshGroup) -> *mut GGD_MeshInstance,
+	pub MeshInstance_Alloc: unsafe extern fn(*mut GGD_MeshGroup) -> *mut GGD_MeshInstance,
 	pub MeshInstance_Free: unsafe extern fn(*mut GGD_MeshInstance),
 	pub MeshInstance_SetMeshData: extern fn(*mut GGD_MeshInstance, mesh: *mut GGD_MeshData, index: u32),
 	pub MeshInstance_SetImageData: extern fn(*mut GGD_MeshInstance, image: *mut GGD_ImageData, layer: i32),

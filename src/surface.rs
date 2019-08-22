@@ -51,18 +51,14 @@ impl<W: Send + Sync + 'static> Surface<W> {
 			Err(err) => panic!("{:?}", err),
 		};
 
-		let mut meshes = self.world.meshes().lock().unwrap();
-		for mesh in &mut *meshes {
-			mesh.refresh();
-		}
-
-		let lights = self.world.lights().lock().unwrap();
-
 		let before_execute: Box<dyn GpuFuture> = if let Some(prev_frame_end) = &mut self.prev_frame_end {
 			Box::new(acquire_future.join(prev_frame_end.clone()))
 		} else {
 			Box::new(acquire_future)
 		};
+
+		let meshes = self.world.meshes().lock().unwrap();
+		let lights = self.world.lights().lock().unwrap();
 		let before_execute = before_execute
 			.then_execute(
 				self.queue.clone(),
@@ -70,6 +66,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 			)
 			.unwrap()
 			.then_swapchain_present(self.queue.clone(), self.swapchain.clone(), image_num);
+
 		let future = (Box::new(before_execute) as Box<dyn GpuFuture>).then_signal_fence_and_flush();
 		if let Some(prev_frame_end) = &mut self.prev_frame_end {
 			prev_frame_end.wait(None).unwrap();

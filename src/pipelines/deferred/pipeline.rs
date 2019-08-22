@@ -1,3 +1,4 @@
+use crate::mesh::MeshInner;
 use super::{
 	context::DeferredPipelineContextInner, geom_fshader, geom_vshader, light_fshader, light_vshader, swap_fshader,
 	swap_vshader, Vert2D, DEPTH_FORMAT, DIFFUSE_FORMAT, LIGHT_FORMAT, NORMAL_FORMAT, POSITION_FORMAT,
@@ -68,7 +69,7 @@ impl Pipeline for DeferredPipeline {
 			[0.0; 4].into(),
 		];
 
-		let make_pc = |mesh: &Mesh| geom_vshader::ty::PushConsts {
+		let make_pc = |mesh: &MeshInner| geom_vshader::ty::PushConsts {
 			cam_proj: cam.projection().into(),
 			cam_pos: cam.transform().pos.into(),
 			cam_rot: cam.transform().rot.into(),
@@ -84,6 +85,9 @@ impl Pipeline for DeferredPipeline {
 				.begin_render_pass(self.framebuffers[image_num].clone(), false, clear_values)
 				.unwrap();
 		for mesh in meshes {
+			let mut mesh = mesh.lock().unwrap();
+			mesh.refresh();
+
 			let mesh_data = mesh.mesh_data().as_ref().unwrap();
 			for mat in mesh.texture_descs() {
 				let pipeline = match mesh_data.topology() {
@@ -91,27 +95,31 @@ impl Pipeline for DeferredPipeline {
 					PrimitiveTopology::TriangleStrip => self.geom_pipeline_strip.clone(),
 					_ => unimplemented!(),
 				};
+				let dynamic = Default::default();
+				let vertex_buffer = vec![mesh_data.vertices().clone()];
+				let sets = mat.tex1().clone();
+				let pc = make_pc(&mesh);
 				match mesh_data.indices() {
 					IndexBuffer::U16(buf) =>
 						command_buffer = command_buffer
 							.draw_indexed(
 								pipeline,
-								&Default::default(),
-								vec![mesh_data.vertices().clone()],
+								&dynamic,
+								vertex_buffer,
 								buf.clone().into_buffer_slice().slice(mat.range().clone()).unwrap(),
-								mat.tex1().clone(),
-								make_pc(mesh),
+								sets,
+								pc,
 							)
 							.unwrap(),
 					IndexBuffer::U32(buf) =>
 						command_buffer = command_buffer
 							.draw_indexed(
 								pipeline,
-								&Default::default(),
-								vec![mesh_data.vertices().clone()],
+								&dynamic,
+								vertex_buffer,
 								buf.clone().into_buffer_slice().slice(mat.range().clone()).unwrap(),
-								mat.tex1().clone(),
-								make_pc(mesh),
+								sets,
+								pc,
 							)
 							.unwrap(),
 				}

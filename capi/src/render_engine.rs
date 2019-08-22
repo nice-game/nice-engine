@@ -1,12 +1,12 @@
 mod camera;
 mod font_data;
 mod image_data;
-mod mesh_batch;
 mod mesh_data;
+mod mesh_group;
 mod mesh_instance;
 mod window;
 
-use self::{camera::*, font_data::*, image_data::*, mesh_batch::*, mesh_data::*, mesh_instance::*, window::*};
+use self::{camera::*, font_data::*, image_data::*, mesh_data::*, mesh_group::*, mesh_instance::*, window::*};
 use crate::game_graph_driver::GGD_RenderEngine;
 
 pub const RENDER_ENGINE: GGD_RenderEngine = GGD_RenderEngine {

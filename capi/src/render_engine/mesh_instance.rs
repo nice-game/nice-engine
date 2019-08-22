@@ -1,11 +1,14 @@
 use crate::{
+	ctx,
 	game_graph::GGTransform,
 	game_graph_driver::{GGD_ImageData, GGD_MeshGroup, GGD_MeshData, GGD_MeshInstance},
 };
 
 #[allow(non_snake_case)]
-pub extern fn MeshInstance_Alloc(_group: *mut GGD_MeshGroup) -> *mut GGD_MeshInstance {
-	Box::into_raw(Box::new(GGD_MeshInstance {}))
+pub unsafe extern fn MeshInstance_Alloc(group: *mut GGD_MeshGroup) -> *mut GGD_MeshInstance {
+	let group = &mut *group;
+
+	Box::into_raw(Box::new(GGD_MeshInstance::new(ctx::get(), group)))
 }
 
 #[allow(non_snake_case)]
