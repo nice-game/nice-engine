@@ -113,8 +113,8 @@ pub struct GGD_RenderEngine {
 	pub Camera_SetPerspective: unsafe extern fn(*mut GGD_Camera, aspect: f32, fovy: f32, zNear: f32, zFar: f32),
 	pub Camera_SetOrthographic: Option<extern fn(*mut GGD_Camera, w: f32, h: f32, zNear: f32, zFar: f32)>,
 	pub Camera_SetParabolic: Option<extern fn(*mut GGD_Camera, scale: f32)>,
-	pub Camera_SetMeshGroup: extern fn(*mut GGD_Camera, *mut GGD_MeshGroup),
-	pub Camera_SetTransform: extern fn(*mut GGD_Camera, *const GGTransform),
+	pub Camera_SetMeshGroup: unsafe extern fn(*mut GGD_Camera, *mut GGD_MeshGroup),
+	pub Camera_SetTransform: unsafe extern fn(*mut GGD_Camera, *const GGTransform),
 }
 
 #[allow(non_camel_case_types)]

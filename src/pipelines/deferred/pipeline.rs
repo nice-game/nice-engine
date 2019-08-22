@@ -1,9 +1,14 @@
-use crate::mesh::MeshInner;
 use super::{
 	context::DeferredPipelineContextInner, geom_fshader, geom_vshader, light_fshader, light_vshader, swap_fshader,
 	swap_vshader, Vert2D, DEPTH_FORMAT, DIFFUSE_FORMAT, LIGHT_FORMAT, NORMAL_FORMAT, POSITION_FORMAT,
 };
-use crate::{camera::Camera, direct_light::DirectLight, mesh::Mesh, mesh_data::{Pntl_32F, IndexBuffer}, pipelines::Pipeline};
+use crate::{
+	camera::Camera,
+	direct_light::DirectLight,
+	mesh::MeshInner,
+	mesh_data::{IndexBuffer, Pntl_32F},
+	pipelines::Pipeline,
+};
 use std::sync::Arc;
 use vulkano::{
 	buffer::BufferAccess,
@@ -48,18 +53,20 @@ impl DeferredPipeline {
 		let framebuffers = create_framebuffers(&ctx.render_pass, &gbuffers, images);
 		let gbuffers_desc = make_gbuffers_desc(ctx.light_layout_desc.clone(), &gbuffers);
 
-		Self { ctx, geom_pipeline_soup, geom_pipeline_strip, swap_pipeline, light_pipeline, framebuffers, gbuffers_desc, dimensions }
+		Self {
+			ctx,
+			geom_pipeline_soup,
+			geom_pipeline_strip,
+			swap_pipeline,
+			light_pipeline,
+			framebuffers,
+			gbuffers_desc,
+			dimensions,
+		}
 	}
 }
 impl Pipeline for DeferredPipeline {
-	fn draw(
-		&self,
-		image_num: usize,
-		qfam: QueueFamily,
-		cam: &Camera,
-		meshes: &[Mesh],
-		lights: &[DirectLight],
-	) -> AutoCommandBuffer {
+	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, lights: &[DirectLight]) -> AutoCommandBuffer {
 		let clear_values = vec![
 			1.0.into(),
 			[0.0, 0.0, 0.0, 1.0].into(),
@@ -84,7 +91,7 @@ impl Pipeline for DeferredPipeline {
 				.unwrap()
 				.begin_render_pass(self.framebuffers[image_num].clone(), false, clear_values)
 				.unwrap();
-		for mesh in meshes {
+		for mesh in cam.mesh_group().lock().unwrap().values() {
 			let mut mesh = mesh.lock().unwrap();
 			mesh.refresh();
 
@@ -100,7 +107,7 @@ impl Pipeline for DeferredPipeline {
 				let sets = mat.tex1().clone();
 				let pc = make_pc(&mesh);
 				match mesh_data.indices() {
-					IndexBuffer::U16(buf) =>
+					IndexBuffer::U16(buf) => {
 						command_buffer = command_buffer
 							.draw_indexed(
 								pipeline,
@@ -110,8 +117,9 @@ impl Pipeline for DeferredPipeline {
 								sets,
 								pc,
 							)
-							.unwrap(),
-					IndexBuffer::U32(buf) =>
+							.unwrap()
+					},
+					IndexBuffer::U32(buf) => {
 						command_buffer = command_buffer
 							.draw_indexed(
 								pipeline,
@@ -121,7 +129,8 @@ impl Pipeline for DeferredPipeline {
 								sets,
 								pc,
 							)
-							.unwrap(),
+							.unwrap()
+					},
 				}
 			}
 		}
@@ -173,12 +182,8 @@ impl Pipeline for DeferredPipeline {
 	}
 
 	fn resize(&mut self, images: Vec<Arc<dyn ImageViewAccess + Send + Sync>>, dimensions: [u32; 2]) {
-		let (geom_pipeline_soup, geom_pipeline_strip) = create_geom_pipelines(
-			&self.ctx.geom_vshader,
-			&self.ctx.geom_fshader,
-			&self.ctx.render_pass,
-			dimensions,
-		);
+		let (geom_pipeline_soup, geom_pipeline_strip) =
+			create_geom_pipelines(&self.ctx.geom_vshader, &self.ctx.geom_fshader, &self.ctx.render_pass, dimensions);
 		self.geom_pipeline_soup = geom_pipeline_soup;
 		self.geom_pipeline_strip = geom_pipeline_strip;
 

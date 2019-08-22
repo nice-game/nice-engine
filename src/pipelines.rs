@@ -1,6 +1,6 @@
 pub(crate) mod deferred;
 
-use crate::{camera::Camera, direct_light::DirectLight, mesh::Mesh};
+use crate::{camera::Camera, direct_light::DirectLight};
 use std::sync::Arc;
 use vulkano::{
 	command_buffer::AutoCommandBuffer,
@@ -30,7 +30,6 @@ pub(crate) trait Pipeline {
 		image_num: usize,
 		qfam: QueueFamily,
 		cam: &Camera,
-		meshes: &[Mesh],
 		lights: &[DirectLight],
 	) -> AutoCommandBuffer;
 	fn resize(&mut self, images: Vec<Arc<dyn ImageViewAccess + Send + Sync>>, dimensions: [u32; 2]);

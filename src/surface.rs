@@ -57,12 +57,12 @@ impl<W: Send + Sync + 'static> Surface<W> {
 			Box::new(acquire_future)
 		};
 
-		let meshes = self.world.meshes().lock().unwrap();
+		let camera = self.camera.lock().unwrap();
 		let lights = self.world.lights().lock().unwrap();
 		let before_execute = before_execute
 			.then_execute(
 				self.queue.clone(),
-				self.pipeline.draw(image_num, self.queue.family(), &self.camera.lock().unwrap(), &meshes, &lights),
+				self.pipeline.draw(image_num, self.queue.family(), &camera, &lights),
 			)
 			.unwrap()
 			.then_swapchain_present(self.queue.clone(), self.swapchain.clone(), image_num);

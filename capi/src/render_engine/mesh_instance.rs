@@ -38,13 +38,14 @@ pub extern fn MeshInstance_SetAnimation(
 }
 
 #[allow(non_snake_case)]
-pub unsafe extern fn MeshInstance_SetTransform(this: *mut GGD_MeshInstance, pose: *const GGTransform) {
+pub unsafe extern fn MeshInstance_SetTransform(this: *mut GGD_MeshInstance, transform: *const GGTransform) {
 	let this = &mut *this;
-	let pose = &*pose;
+	let transform = &*transform;
 
 	let mut lock = this.lock().unwrap();
-	lock.transform_mut().pos = vec3(pose.Position.x, pose.Position.y, pose.Position.z);
-	lock.transform_mut().rot = Quaternion::new(pose.Rotation.w, pose.Rotation.x, pose.Rotation.y, pose.Rotation.z);
+	lock.transform_mut().pos = vec3(transform.Position.x, transform.Position.y, transform.Position.z);
+	lock.transform_mut().rot =
+		Quaternion::new(transform.Rotation.w, transform.Rotation.x, transform.Rotation.y, transform.Rotation.z);
 }
 
 #[allow(non_snake_case)]

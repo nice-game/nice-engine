@@ -50,13 +50,13 @@ pub unsafe extern fn MeshData_Alloc_Polygon(
 		IFMT_SOUP_16U | IFMT_STRIP_16U => {
 			let buffer = slice::from_raw_parts(indexBuffer as *const u16, indexCount as usize).iter().cloned();
 			let (indices, indices_future) =
-				ImmutableBuffer::from_iter(buffer, BufferUsage::vertex_buffer(), queue.clone()).unwrap();
+				ImmutableBuffer::from_iter(buffer, BufferUsage::index_buffer(), queue.clone()).unwrap();
 			(MeshData::from_bufs_u16(vertices, indices, topology), indices_future)
 		},
 		IFMT_SOUP_32U | IFMT_STRIP_32U => {
 			let buffer = slice::from_raw_parts(indexBuffer as *const u32, indexCount as usize).iter().cloned();
 			let (indices, indices_future) =
-				ImmutableBuffer::from_iter(buffer, BufferUsage::vertex_buffer(), queue.clone()).unwrap();
+				ImmutableBuffer::from_iter(buffer, BufferUsage::index_buffer(), queue.clone()).unwrap();
 			(MeshData::from_bufs_u32(vertices, indices, topology), indices_future)
 		},
 		IFMT_UNDEFINED => unimplemented!(),
