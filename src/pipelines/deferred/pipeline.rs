@@ -82,8 +82,6 @@ impl Pipeline for DeferredPipeline {
 			cam_rot: cam.transform().rot.into(),
 			mesh_pos: mesh.transform().pos.into(),
 			mesh_rot: mesh.transform().rot.into(),
-			_dummy0: unsafe { std::mem::uninitialized() },
-			_dummy1: unsafe { std::mem::uninitialized() },
 		};
 
 		let mut command_buffer =
@@ -159,7 +157,6 @@ impl Pipeline for DeferredPipeline {
 						CameraOffset: cam.transform().pos.into(),
 						LightPosition: [light.position.x, light.position.y, light.position.z, 1.0 / radius_squared],
 						LightColor: [light.color.x, light.color.y, light.color.z, light_cutoff * radius_squared],
-						_dummy0: unsafe { std::mem::uninitialized() },
 					},
 				)
 				.unwrap();

@@ -3,7 +3,7 @@ use crate::{
 	game_graph::GGTransform,
 	game_graph_driver::{GGD_ImageData, GGD_MeshData, GGD_MeshGroup, GGD_MeshInstance},
 };
-use cgmath::{vec3, Quaternion};
+use cgmath::{vec4, Quaternion};
 
 #[allow(non_snake_case)]
 pub unsafe extern fn MeshInstance_Alloc(group: *mut GGD_MeshGroup) -> *mut GGD_MeshInstance {
@@ -43,7 +43,8 @@ pub unsafe extern fn MeshInstance_SetTransform(this: *mut GGD_MeshInstance, tran
 	let transform = &*transform;
 
 	let mut lock = this.lock().unwrap();
-	lock.transform_mut().pos = vec3(transform.Position.x, transform.Position.y, transform.Position.z);
+	lock.transform_mut().pos =
+		vec4(transform.Position.x, transform.Position.y, transform.Position.z, transform.Position.w);
 	lock.transform_mut().rot =
 		Quaternion::new(transform.Rotation.w, transform.Rotation.x, transform.Rotation.y, transform.Rotation.z);
 }

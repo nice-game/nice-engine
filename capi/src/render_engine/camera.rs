@@ -2,7 +2,7 @@ use crate::{
 	game_graph::GGTransform,
 	game_graph_driver::{GGD_Camera, GGD_MeshGroup},
 };
-use cgmath::{vec3, Quaternion};
+use cgmath::{vec4, Quaternion};
 use std::sync::Arc;
 
 #[allow(non_snake_case)]
@@ -36,7 +36,7 @@ pub unsafe extern fn Camera_SetTransform(this: *mut GGD_Camera, transform: *cons
 	let transform = &*transform;
 
 	let mut lock = this.lock().unwrap();
-	lock.transform_mut().pos = vec3(transform.Position.x, transform.Position.y, transform.Position.z);
+	lock.transform_mut().pos = vec4(transform.Position.x, transform.Position.y, transform.Position.z, transform.Position.w);
 	lock.transform_mut().rot =
 		Quaternion::new(transform.Rotation.w, transform.Rotation.x, transform.Rotation.y, transform.Rotation.z);
 }

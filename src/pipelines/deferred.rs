@@ -50,9 +50,9 @@ layout(location = 2) out vec3 out_pos;
 
 layout(push_constant) uniform PushConsts {
 	vec4 cam_proj;
-	vec3 cam_pos;
+	vec4 cam_pos;
 	vec4 cam_rot;
-	vec3 mesh_pos;
+	vec4 mesh_pos;
 	vec4 mesh_rot;
 } pc;
 
@@ -73,8 +73,8 @@ void main() {
 	vec4 cam_rot = pc.cam_rot.yzwx;
 	vec4 mesh_rot = pc.mesh_rot.yzwx;
 
-	vec3 pos_ws = quat_mul(mesh_rot, pos) + pc.mesh_pos;
-	vec3 pos_cs = quat_mul(quat_inv(cam_rot), pos_ws - pc.cam_pos);
+	vec3 pos_ws = quat_mul(mesh_rot, pos) + pc.mesh_pos.xyz;
+	vec3 pos_cs = quat_mul(quat_inv(cam_rot), pos_ws - pc.cam_pos.xyz);
 	vec3 pos_es = vec3(pos_cs.x, -pos_cs.z, -pos_cs.y);
 
 	out_nor = quat_mul(mesh_rot, nor);
@@ -193,7 +193,7 @@ layout(push_constant) uniform PushConsts {
 	vec4 Resolution;
 	vec4 Projection;
 	vec4 CameraRotation;
-	vec3 CameraOffset;
+	vec4 CameraOffset;
 	vec4 LightPosition;
 	vec4 LightColor;
 } pc;
@@ -258,7 +258,7 @@ void main() {
 	lightFalloff /= 1.0 + lightDistanceSquared;
 	lightFalloff *= lightRadiusSquaredTimesCutoff;
 	vec3 lightPower = pc.LightColor.rgb * lightFalloff;
-	float specularPower = pow(max(0.0, dot(normalize(normalize(pc.LightPosition.xyz - position) + normalize(pc.CameraOffset - position)), normal)), specularExponent) * specularNorm;
+	float specularPower = pow(max(0.0, dot(normalize(normalize(pc.LightPosition.xyz - position) + normalize(pc.CameraOffset.xyz - position)), normal)), specularExponent) * specularNorm;
 	vec3 specularColor = mix(vec3(0.04), color, metal) * specularPower;
 	pixel = vec4((diffuseColor + specularColor) * lightPower, 1);
 }
