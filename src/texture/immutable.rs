@@ -17,6 +17,23 @@ pub struct ImmutableTexture {
 	image: Arc<dyn ImageViewAccess + Send + Sync>,
 }
 impl ImmutableTexture {
+	pub fn from_iter_vk<F, P, I>(
+		queue: Arc<Queue>,
+		iter: I,
+		dimensions: [u32; 2],
+		format: F,
+	) -> Result<(Self, impl GpuFuture), ImageCreationError>
+	where
+		P: Send + Sync + Clone + 'static,
+		F: FormatDesc + AcceptsPixels<P> + 'static + Send + Sync,
+		I: ExactSizeIterator<Item = P>,
+		Format: AcceptsPixels<P>,
+	{
+		let buffer =
+			CpuAccessibleBuffer::from_iter(queue.device().clone(), BufferUsage::transfer_source(), iter).unwrap();
+		Self::from_buffer(queue, buffer, dimensions, format)
+	}
+
 	pub(crate) fn from_buffer<F, B, P>(
 		queue: Arc<Queue>,
 		buffer: B,
@@ -46,23 +63,6 @@ impl ImmutableTexture {
 		let future = MipmapsCommandBuffer::new(device.clone(), queue.family(), buffer, init).execute(queue).unwrap();
 
 		Ok((Self { image }, future))
-	}
-
-	pub(crate) fn from_iter_vk<F, P, I>(
-		queue: Arc<Queue>,
-		iter: I,
-		dimensions: [u32; 2],
-		format: F,
-	) -> Result<(Self, impl GpuFuture), ImageCreationError>
-	where
-		P: Send + Sync + Clone + 'static,
-		F: FormatDesc + AcceptsPixels<P> + 'static + Send + Sync,
-		I: ExactSizeIterator<Item = P>,
-		Format: AcceptsPixels<P>,
-	{
-		let buffer =
-			CpuAccessibleBuffer::from_iter(queue.device().clone(), BufferUsage::transfer_source(), iter).unwrap();
-		Self::from_buffer(queue, buffer, dimensions, format)
 	}
 }
 impl Texture for ImmutableTexture {

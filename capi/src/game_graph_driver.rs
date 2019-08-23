@@ -1,7 +1,9 @@
-use nice_engine::mesh::Mesh;
+use nice_engine::texture::ImmutableTexture;
 use crate::game_graph::*;
 use libc::c_void;
-use nice_engine::{camera::Camera, mesh_data::MeshData, mesh_group::MeshGroup, surface::Surface as NiceSurface};
+use nice_engine::{
+	camera::Camera, mesh::Mesh, mesh_data::MeshData, mesh_group::MeshGroup, surface::Surface as NiceSurface,
+};
 #[cfg(unix)]
 use std::os::raw::c_ulong;
 use std::{
@@ -26,7 +28,10 @@ pub struct GGD_DriverContext {
 pub struct GGD_FontData {}
 
 #[allow(non_camel_case_types)]
-pub struct GGD_ImageData {}
+pub enum GGD_ImageData {
+	Uninitialized(GGImageUsage),
+	Immutable(ImmutableTexture),
+}
 
 #[allow(non_camel_case_types)]
 pub type GGD_MeshGroup = Arc<MeshGroup>;
@@ -83,7 +88,7 @@ pub struct GGD_RenderEngine {
 	pub ImageData_Alloc: extern fn(usage: GGImageUsage, x: u32, y: u32, format: GGPixelFormat) -> *mut GGD_ImageData,
 	pub ImageData_Free: unsafe extern fn(*mut GGD_ImageData),
 	pub ImageData_SetPixelData:
-		extern fn(image: *mut GGD_ImageData, buffer: *const c_void, x: u32, y: u32, format: GGPixelFormat),
+		unsafe extern fn(image: *mut GGD_ImageData, buffer: *const c_void, x: u32, y: u32, format: GGPixelFormat),
 	pub ImageData_GetPixelData:
 		extern fn(image: *mut GGD_ImageData, buffer: *mut c_void, x: *mut u32, y: *mut u32, format: *mut GGPixelFormat),
 	pub ImageData_DrawCamera: extern fn(dst: *mut GGD_ImageData, src: *mut GGD_Camera),

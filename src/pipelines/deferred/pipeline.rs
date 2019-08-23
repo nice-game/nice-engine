@@ -93,42 +93,43 @@ impl Pipeline for DeferredPipeline {
 			let mut mesh = mesh.lock().unwrap();
 			mesh.refresh();
 
-			let mesh_data = mesh.mesh_data().as_ref().unwrap();
-			for mat in mesh.texture_descs() {
-				let pipeline = match mesh_data.topology() {
-					PrimitiveTopology::TriangleList => self.geom_pipeline_soup.clone(),
-					PrimitiveTopology::TriangleStrip => self.geom_pipeline_strip.clone(),
-					_ => unimplemented!(),
-				};
-				let dynamic = Default::default();
-				let vertex_buffer = vec![mesh_data.vertices().clone()];
-				let sets = mat.tex1().clone();
-				let pc = make_pc(&mesh);
-				match mesh_data.indices() {
-					IndexBuffer::U16(buf) => {
-						command_buffer = command_buffer
-							.draw_indexed(
-								pipeline,
-								&dynamic,
-								vertex_buffer,
-								buf.clone().into_buffer_slice().slice(mat.range().clone()).unwrap(),
-								sets,
-								pc,
-							)
-							.unwrap()
-					},
-					IndexBuffer::U32(buf) => {
-						command_buffer = command_buffer
-							.draw_indexed(
-								pipeline,
-								&dynamic,
-								vertex_buffer,
-								buf.clone().into_buffer_slice().slice(mat.range().clone()).unwrap(),
-								sets,
-								pc,
-							)
-							.unwrap()
-					},
+			if let Some(mesh_data) = mesh.mesh_data().as_ref() {
+				for mat in mesh.texture_descs() {
+					let pipeline = match mesh_data.topology() {
+						PrimitiveTopology::TriangleList => self.geom_pipeline_soup.clone(),
+						PrimitiveTopology::TriangleStrip => self.geom_pipeline_strip.clone(),
+						_ => unimplemented!(),
+					};
+					let dynamic = Default::default();
+					let vertex_buffer = vec![mesh_data.vertices().clone()];
+					let sets = mat.tex1().clone();
+					let pc = make_pc(&mesh);
+					match mesh_data.indices() {
+						IndexBuffer::U16(buf) => {
+							command_buffer = command_buffer
+								.draw_indexed(
+									pipeline,
+									&dynamic,
+									vertex_buffer,
+									buf.clone().into_buffer_slice().slice(mat.range().clone()).unwrap(),
+									sets,
+									pc,
+								)
+								.unwrap()
+						},
+						IndexBuffer::U32(buf) => {
+							command_buffer = command_buffer
+								.draw_indexed(
+									pipeline,
+									&dynamic,
+									vertex_buffer,
+									buf.clone().into_buffer_slice().slice(mat.range().clone()).unwrap(),
+									sets,
+									pc,
+								)
+								.unwrap()
+						},
+					}
 				}
 			}
 		}

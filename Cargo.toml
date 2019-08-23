@@ -25,5 +25,9 @@ winit = { version = "0.19.1", optional = true }
 default = ["window"]
 window = ["vulkano-win", "winit"]
 
+[profile.dev]
+panic = "abort"
+
 [profile.release]
 lto = true
+panic = "abort"
