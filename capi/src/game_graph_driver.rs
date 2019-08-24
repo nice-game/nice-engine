@@ -1,4 +1,4 @@
-use nice_engine::texture::ImmutableTexture;
+use nice_engine::texture::Texture;
 use crate::game_graph::*;
 use libc::c_void;
 use nice_engine::{
@@ -30,7 +30,15 @@ pub struct GGD_FontData {}
 #[allow(non_camel_case_types)]
 pub enum GGD_ImageData {
 	Uninitialized(GGImageUsage),
-	Immutable(ImmutableTexture),
+	Initialized(Arc<dyn Texture + Send + Sync>),
+}
+impl GGD_ImageData {
+	pub fn tex(&self) -> Option<&Arc<dyn Texture + Send + Sync>> {
+		match self {
+			Self::Initialized(tex) => Some(tex),
+			Self::Uninitialized(_) => None,
+		}
+	}
 }
 
 #[allow(non_camel_case_types)]
@@ -108,7 +116,7 @@ pub struct GGD_RenderEngine {
 	pub MeshInstance_Alloc: unsafe extern fn(*mut GGD_MeshGroup) -> *mut GGD_MeshInstance,
 	pub MeshInstance_Free: unsafe extern fn(*mut GGD_MeshInstance),
 	pub MeshInstance_SetMeshData: unsafe extern fn(*mut GGD_MeshInstance, mesh: *mut GGD_MeshData, index: u32),
-	pub MeshInstance_SetImageData: extern fn(*mut GGD_MeshInstance, image: *mut GGD_ImageData, layer: i32),
+	pub MeshInstance_SetImageData: unsafe extern fn(*mut GGD_MeshInstance, image: *mut GGD_ImageData, layer: i32),
 	pub MeshInstance_SetAnimation: extern fn(*mut GGD_MeshInstance, firstIndex: u32, lastIndex: u32, frameRate: f32),
 	pub MeshInstance_SetTransform: unsafe extern fn(*mut GGD_MeshInstance, pose: *const GGTransform),
 	pub MeshInstance_SetBoneTransform: extern fn(*mut GGD_MeshInstance, bone: u32, pose: *const GGTransform),

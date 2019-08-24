@@ -75,26 +75,26 @@ impl MeshData {
 		Arc::new(Self { vertices, indices, topology })
 	}
 
-	pub(crate) fn vertices(&self) -> &Arc<dyn BufferAccess + Send + Sync> {
+	pub fn vertices(&self) -> &Arc<dyn BufferAccess + Send + Sync> {
 		&self.vertices
 	}
 
-	pub(crate) fn indices(&self) -> &IndexBuffer {
+	pub fn indices(&self) -> &IndexBuffer {
 		&self.indices
 	}
 
-	pub(crate) fn topology(&self) -> PrimitiveTopology {
+	pub fn topology(&self) -> PrimitiveTopology {
 		self.topology
 	}
 }
 
 #[derive(Clone)]
-pub(crate) enum IndexBuffer {
+pub enum IndexBuffer {
 	U16(Arc<dyn TypedBufferAccess<Content = [u16]> + Send + Sync>),
 	U32(Arc<dyn TypedBufferAccess<Content = [u32]> + Send + Sync>),
 }
 impl IndexBuffer {
-	pub(crate) fn len(&self) -> usize {
+	pub fn len(&self) -> usize {
 		match self {
 			Self::U16(buf) => buf.len(),
 			Self::U32(buf) => buf.len(),

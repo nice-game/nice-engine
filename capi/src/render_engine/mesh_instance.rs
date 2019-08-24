@@ -9,7 +9,7 @@ use cgmath::{vec4, Quaternion};
 pub unsafe extern fn MeshInstance_Alloc(group: *mut GGD_MeshGroup) -> *mut GGD_MeshInstance {
 	let group = &mut *group;
 
-	Box::into_raw(Box::new(GGD_MeshInstance::new(ctx::get(), group)))
+	Box::into_raw(Box::new(GGD_MeshInstance::new(ctx::get(), group.clone())))
 }
 
 #[allow(non_snake_case)]
@@ -26,7 +26,12 @@ pub unsafe extern fn MeshInstance_SetMeshData(this: *mut GGD_MeshInstance, mesh:
 }
 
 #[allow(non_snake_case)]
-pub extern fn MeshInstance_SetImageData(_this: *mut GGD_MeshInstance, _image: *mut GGD_ImageData, _layer: i32) {}
+pub unsafe extern fn MeshInstance_SetImageData(this: *mut GGD_MeshInstance, image: *mut GGD_ImageData, layer: i32) {
+	let this = &mut *this;
+	let image = &mut *image;
+
+	this.lock().unwrap().set_tex(layer as usize, image.tex().unwrap().clone());
+}
 
 #[allow(non_snake_case)]
 pub extern fn MeshInstance_SetAnimation(

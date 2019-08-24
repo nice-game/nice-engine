@@ -8,7 +8,7 @@ use crate::{
 };
 use libc::c_void;
 use nice_engine::texture::ImmutableTexture;
-use std::slice;
+use std::{slice, sync::Arc};
 use vulkano::{format::Format::*, sync::GpuFuture};
 
 #[allow(non_snake_case)]
@@ -62,13 +62,13 @@ pub unsafe extern fn ImageData_SetPixelData(
 					_ => panic!("{:?} not supported", format),
 				};
 
-				*this = GGD_ImageData::Immutable(tex);
+				*this = GGD_ImageData::Initialized(Arc::new(tex));
 
 				tex_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 			},
 			_ => unimplemented!(),
 		},
-		GGD_ImageData::Immutable(_) => panic!("cannot initialize static or glyph images twice"),
+		GGD_ImageData::Initialized(_) => panic!("cannot write to initialized image"),
 	}
 }
 

@@ -149,12 +149,19 @@ pub(crate) fn from_nice_model(
 }
 
 pub(crate) struct MaterialInfo {
+	#[allow(dead_code)]
 	pub(crate) range: Range<usize>,
+	#[allow(dead_code)]
 	pub(crate) tex1: PathBuf,
+	#[allow(dead_code)]
 	pub(crate) tex2: PathBuf,
+	#[allow(dead_code)]
 	pub(crate) light_penetration: u8,
+	#[allow(dead_code)]
 	pub(crate) subsurface_scattering: u8,
+	#[allow(dead_code)]
 	pub(crate) emissive_brightness: u16,
+	#[allow(dead_code)]
 	pub(crate) base_color: [u8; 3],
 }
 

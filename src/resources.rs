@@ -2,7 +2,7 @@ mod model;
 mod texture;
 
 use crate::{
-	mesh::{Material, Mesh},
+	mesh::Mesh,
 	mesh_data::MeshData,
 	mesh_group::MeshGroup,
 	texture::{ImmutableTexture, Texture},
@@ -69,23 +69,18 @@ impl Resources {
 		(Self { queue, layout_desc, sampler, white_pixel, meshes, textures }, white_pixel_future)
 	}
 
-	pub fn get_model(&mut self, mesh_group: &Arc<MeshGroup>, path: impl AsRef<Path> + Clone + Send + 'static) -> Mesh {
+	pub fn get_model(&mut self, mesh_group: Arc<MeshGroup>, path: impl AsRef<Path> + Clone + Send + 'static) -> Mesh {
 		let model = self.meshes.get(path.as_ref()).cloned().unwrap_or_else(|| {
-			let (mesh_data, mats, mesh_data_future) = model::from_nice_model(&self.queue, path.clone());
+			let (mesh_data, _mats, mesh_data_future) = model::from_nice_model(&self.queue, path.clone());
 			mesh_data_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
-			let mats = mats
-				.into_iter()
-				.map(|mat| Material {
-					range: mat.range,
-					tex1: self.get_texture(mat.tex1),
-					tex2: self.get_texture(mat.tex2),
-					light_penetration: mat.light_penetration,
-					subsurface_scattering: mat.subsurface_scattering,
-					emissive_brightness: mat.emissive_brightness,
-					base_color: mat.base_color,
-				})
-				.collect();
-			let model = Arc::new(Model { mesh_data, mats });
+			// let mats = mats
+			// 	.into_iter()
+			// 	.map(|mat| Material {
+			// 		range: mat.range,
+			// 		textures: [self.get_texture(mat.tex1), self.get_texture(mat.tex2)],
+			// 	})
+			// 	.collect();
+			let model = Arc::new(Model { mesh_data /* mats */ });
 			self.meshes.insert(path.as_ref().to_owned(), model.clone());
 			model
 		});
@@ -95,7 +90,7 @@ impl Resources {
 		{
 			let mut mesh_inner = mesh.lock().unwrap();
 			mesh_inner.set_mesh_data(Some(model.mesh_data.clone()));
-			mesh_inner.set_materials(&model.mats);
+			// mesh_inner.set_materials(&model.mats);
 		}
 		mesh
 	}
@@ -133,7 +128,7 @@ fn load_tex(queue: Arc<Queue>, res: Arc<TextureResource>, path: impl AsRef<Path>
 
 struct Model {
 	mesh_data: Arc<MeshData>,
-	mats: Vec<Material>,
+	// mats: Vec<Material>,
 }
 
 struct TextureResource {
