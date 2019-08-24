@@ -25,12 +25,6 @@ pub(crate) trait PipelineContext {
 }
 
 pub(crate) trait Pipeline {
-	fn draw(
-		&self,
-		image_num: usize,
-		qfam: QueueFamily,
-		cam: &Camera,
-		lights: &[DirectLight],
-	) -> AutoCommandBuffer;
+	fn draw(&self, image_num: usize, qfam: QueueFamily, cam: &Camera, lights: &[DirectLight]) -> AutoCommandBuffer;
 	fn resize(&mut self, images: Vec<Arc<dyn ImageViewAccess + Send + Sync>>, dimensions: [u32; 2]);
 }

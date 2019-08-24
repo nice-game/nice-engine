@@ -1,8 +1,6 @@
-use std::sync::Arc;
-use crate::mesh_group::MeshGroup;
-use crate::transform::Transform;
+use crate::{mesh_group::MeshGroup, transform::Transform};
 use cgmath::{prelude::*, vec4, Vector4};
-use std::f32::consts::PI;
+use std::{f32::consts::PI, sync::Arc};
 
 pub struct Camera {
 	proj: Vector4<f32>,

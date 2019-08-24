@@ -1,7 +1,8 @@
-use std::collections::HashMap;
-use std::sync::{LockResult, MutexGuard};
 use crate::mesh::MeshInner;
-use std::sync::{Arc, Mutex};
+use std::{
+	collections::HashMap,
+	sync::{Arc, LockResult, Mutex, MutexGuard},
+};
 
 pub struct MeshGroup {
 	meshes: Mutex<HashMap<usize, Arc<Mutex<MeshInner>>>>,

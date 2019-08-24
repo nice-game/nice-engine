@@ -1,4 +1,4 @@
-use crate::{direct_light::DirectLight};
+use crate::direct_light::DirectLight;
 use std::sync::{Arc, Mutex};
 
 pub struct World {

@@ -36,7 +36,8 @@ pub unsafe extern fn Camera_SetTransform(this: *mut GGD_Camera, transform: *cons
 	let transform = &*transform;
 
 	let mut lock = this.lock().unwrap();
-	lock.transform_mut().pos = vec4(transform.Position.x, transform.Position.y, transform.Position.z, transform.Position.w);
+	lock.transform_mut().pos =
+		vec4(transform.Position.x, transform.Position.y, transform.Position.z, transform.Position.w);
 	lock.transform_mut().rot =
 		Quaternion::new(transform.Rotation.w, transform.Rotation.x, transform.Rotation.y, transform.Rotation.z);
 }
