@@ -2,19 +2,39 @@ use crate::{
 	ctx,
 	game_graph::{
 		GGImageUsage::{self, *},
-		GGPixelFormat::{self, *},
+		GGPixelFormat, GGTextOrigin,
 	},
 	game_graph_driver::{GGD_Camera, GGD_FontData, GGD_ImageData},
 };
+use half::f16;
 use libc::c_void;
-use nice_engine::texture::ImmutableTexture;
-use std::{slice, sync::Arc};
-use vulkano::{format::Format::*, sync::GpuFuture};
+use nice_engine::texture::{ImmutableTexture, TargetTexture};
+use std::{ptr::null, slice, sync::Arc};
+use vulkano::{
+	format::Format::{self, *},
+	sync::GpuFuture,
+};
 
 #[allow(non_snake_case)]
-pub extern fn ImageData_Alloc(usage: GGImageUsage, _x: u32, _y: u32, _format: GGPixelFormat) -> *mut GGD_ImageData {
+pub unsafe extern fn ImageData_Alloc(
+	usage: GGImageUsage,
+	x: u32,
+	y: u32,
+	format: GGPixelFormat,
+	buffer: *const c_void,
+) -> *mut GGD_ImageData {
 	match usage {
-		IMG_USAGE_STATIC | IMG_USAGE_GLYPH => Box::into_raw(Box::new(GGD_ImageData::Uninitialized(usage))),
+		IMG_USAGE_STATIC | IMG_USAGE_GLYPH => {
+			let ret = Box::into_raw(Box::new(GGD_ImageData::Uninitialized { usage, x, y, format }));
+			if buffer != null() {
+				ImageData_SetPixelData(ret, buffer, 0);
+			}
+			ret
+		},
+		IMG_USAGE_TARGET => {
+			let tex = TargetTexture::new::<Format>(ctx::get().device().clone(), [x, y], format.into()).unwrap();
+			Box::into_raw(Box::new(GGD_ImageData::Initialized(Arc::new(tex))))
+		},
 		_ => unimplemented!(),
 	}
 }
@@ -25,28 +45,21 @@ pub unsafe extern fn ImageData_Free(this: *mut GGD_ImageData) {
 }
 
 #[allow(non_snake_case)]
-pub unsafe extern fn ImageData_SetPixelData(
-	this: *mut GGD_ImageData,
-	buffer: *const c_void,
-	x: u32,
-	y: u32,
-	format: GGPixelFormat,
-) {
+pub unsafe extern fn ImageData_SetPixelData(this: *mut GGD_ImageData, buffer: *const c_void, mipmap: i32) -> i32 {
 	let this = &mut *this;
 
-	match this {
-		GGD_ImageData::Uninitialized(usage) => match *usage {
+	if mipmap != 0 {
+		return 1;
+	}
+
+	match *this {
+		GGD_ImageData::Uninitialized { usage, x, y, format } => match usage {
 			IMG_USAGE_STATIC | IMG_USAGE_GLYPH => {
 				let queue = ctx::get().queue().clone();
 				let dims = [x, y];
 				let len = x as usize * y as usize;
 
-				let format = match format {
-					PFMT_RGBA8_UNORM => R8G8B8A8Unorm,
-					PFMT_RGBA8_SRGB => R8G8B8A8Srgb,
-					PFMT_RGBA32F => R32G32B32A32Sfloat,
-					_ => panic!("{:?} not supported", format),
-				};
+				let format = format.into();
 
 				let (tex, tex_future): (_, Box<dyn GpuFuture>) = match format {
 					R8G8B8A8Unorm | R8G8B8A8Srgb => {
@@ -56,6 +69,11 @@ pub unsafe extern fn ImageData_SetPixelData(
 					},
 					R32G32B32A32Sfloat => {
 						let buffer = slice::from_raw_parts(buffer as *const [f32; 4], len).iter().cloned();
+						let (tex, fut) = ImmutableTexture::from_iter_vk(queue, buffer, dims, format).unwrap();
+						(tex, Box::new(fut))
+					},
+					R16G16B16A16Sfloat => {
+						let buffer = slice::from_raw_parts(buffer as *const [f16; 4], len).iter().cloned();
 						let (tex, fut) = ImmutableTexture::from_iter_vk(queue, buffer, dims, format).unwrap();
 						(tex, Box::new(fut))
 					},
@@ -70,17 +88,13 @@ pub unsafe extern fn ImageData_SetPixelData(
 		},
 		GGD_ImageData::Initialized(_) => panic!("cannot write to initialized image"),
 	}
+
+	1
 }
 
 // buffer can be null. x, y, and format are in/out params.
 #[allow(non_snake_case)]
-pub extern fn ImageData_GetPixelData(
-	_this: *mut GGD_ImageData,
-	_buffer: *mut c_void,
-	_x: *mut u32,
-	_y: *mut u32,
-	_format: *mut GGPixelFormat,
-) {
+pub extern fn ImageData_GetPixelData(_this: *mut GGD_ImageData, _buffer: *mut c_void, _mipmap: i32) -> i32 {
 	unimplemented!();
 }
 
@@ -104,6 +118,7 @@ pub extern fn ImageData_DrawText(
 	_src: *mut GGD_FontData,
 	_x: f32,
 	_y: f32,
+	_origin: GGTextOrigin,
 	_text: *const char,
 ) {
 }

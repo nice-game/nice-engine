@@ -1,8 +1,8 @@
-use nice_engine::texture::Texture;
 use crate::game_graph::*;
 use libc::c_void;
 use nice_engine::{
 	camera::Camera, mesh::Mesh, mesh_data::MeshData, mesh_group::MeshGroup, surface::Surface as NiceSurface,
+	texture::Texture,
 };
 #[cfg(unix)]
 use std::os::raw::c_ulong;
@@ -29,14 +29,14 @@ pub struct GGD_FontData {}
 
 #[allow(non_camel_case_types)]
 pub enum GGD_ImageData {
-	Uninitialized(GGImageUsage),
+	Uninitialized { usage: GGImageUsage, x: u32, y: u32, format: GGPixelFormat },
 	Initialized(Arc<dyn Texture + Send + Sync>),
 }
 impl GGD_ImageData {
 	pub fn tex(&self) -> Option<&Arc<dyn Texture + Send + Sync>> {
 		match self {
 			Self::Initialized(tex) => Some(tex),
-			Self::Uninitialized(_) => None,
+			Self::Uninitialized { .. } => None,
 		}
 	}
 }
@@ -93,21 +93,32 @@ pub struct GGD_RenderEngine {
 		Option<extern fn(buffer: *const c_void, x: u32, y: u32, z: u32, format: GGDistanceFormat) -> *mut GGD_MeshData>,
 	pub MeshData_Free: unsafe extern fn(*mut GGD_MeshData),
 
-	pub ImageData_Alloc: extern fn(usage: GGImageUsage, x: u32, y: u32, format: GGPixelFormat) -> *mut GGD_ImageData,
+	pub ImageData_Alloc: unsafe extern fn(
+		usage: GGImageUsage,
+		x: u32,
+		y: u32,
+		format: GGPixelFormat,
+		buffer: *const c_void,
+	) -> *mut GGD_ImageData,
 	pub ImageData_Free: unsafe extern fn(*mut GGD_ImageData),
-	pub ImageData_SetPixelData:
-		unsafe extern fn(image: *mut GGD_ImageData, buffer: *const c_void, x: u32, y: u32, format: GGPixelFormat),
-	pub ImageData_GetPixelData:
-		extern fn(image: *mut GGD_ImageData, buffer: *mut c_void, x: *mut u32, y: *mut u32, format: *mut GGPixelFormat),
-	pub ImageData_DrawCamera: extern fn(dst: *mut GGD_ImageData, src: *mut GGD_Camera),
+	pub ImageData_SetPixelData: unsafe extern fn(this: *mut GGD_ImageData, buffer: *const c_void, mipmap: i32) -> i32,
+	pub ImageData_GetPixelData: extern fn(this: *mut GGD_ImageData, buffer: *mut c_void, mipmap: i32) -> i32,
+	pub ImageData_DrawCamera: extern fn(this: *mut GGD_ImageData, src: *mut GGD_Camera),
 	pub ImageData_DrawImage:
-		extern fn(dst: *mut GGD_ImageData, src: *mut GGD_ImageData, x: f32, y: f32, w: f32, h: f32),
-	pub ImageData_DrawText:
-		extern fn(dst: *mut GGD_ImageData, src: *mut GGD_FontData, x: f32, y: f32, text: *const char),
+		extern fn(this: *mut GGD_ImageData, src: *mut GGD_ImageData, x: f32, y: f32, w: f32, h: f32),
+	pub ImageData_DrawText: extern fn(
+		this: *mut GGD_ImageData,
+		src: *mut GGD_FontData,
+		x: f32,
+		y: f32,
+		origin: GGTextOrigin,
+		text: *const char,
+	),
 
 	pub FontData_Alloc: extern fn() -> *mut GGD_FontData,
 	pub FontData_Free: unsafe extern fn(*mut GGD_FontData),
-	pub FontData_SetGlyph: extern fn(image: *mut GGD_FontData, codepoint: u32, img: *mut GGD_ImageData),
+	pub FontData_SetGlyph:
+		extern fn(image: *mut GGD_FontData, codepoint: u32, img: *mut GGD_ImageData, basex: f32, basey: f32),
 
 	pub MeshGroup_Alloc: extern fn() -> *mut GGD_MeshGroup,
 	pub MeshGroup_Free: unsafe extern fn(*mut GGD_MeshGroup),
@@ -116,6 +127,7 @@ pub struct GGD_RenderEngine {
 	pub MeshInstance_Alloc: unsafe extern fn(*mut GGD_MeshGroup) -> *mut GGD_MeshInstance,
 	pub MeshInstance_Free: unsafe extern fn(*mut GGD_MeshInstance),
 	pub MeshInstance_SetMeshData: unsafe extern fn(*mut GGD_MeshInstance, mesh: *mut GGD_MeshData, index: u32),
+	pub MeshInstance_SetMeshSubset: unsafe extern fn(this: *mut GGD_MeshInstance, offset: u32, count: u32),
 	pub MeshInstance_SetImageData: unsafe extern fn(*mut GGD_MeshInstance, image: *mut GGD_ImageData, layer: i32),
 	pub MeshInstance_SetAnimation: extern fn(*mut GGD_MeshInstance, firstIndex: u32, lastIndex: u32, frameRate: f32),
 	pub MeshInstance_SetTransform: unsafe extern fn(*mut GGD_MeshInstance, pose: *const GGTransform),
@@ -168,7 +180,7 @@ pub struct GGD_WindowInfo_WIN32 {
 pub struct GGD_WindowInfo_X11 {
 	pub info: GGD_WindowInfo,
 	pub display: *mut Display,
-	pub surface: Surface,
+	pub window: X11Window,
 }
 
 #[cfg(windows)]
@@ -186,4 +198,4 @@ type wl_shell_surface = c_void;
 #[cfg(unix)]
 type Display = c_void;
 #[cfg(unix)]
-type Surface = c_ulong;
+type X11Window = c_ulong;

@@ -5,9 +5,12 @@ use crate::{
 	transform::Transform,
 	Context,
 };
-use std::sync::{
-	atomic::{AtomicUsize, Ordering},
-	Arc, LockResult, Mutex, MutexGuard,
+use std::{
+	ops::Range,
+	sync::{
+		atomic::{AtomicUsize, Ordering},
+		Arc, LockResult, Mutex, MutexGuard,
+	},
 };
 use vulkano::{
 	descriptor::{descriptor_set::PersistentDescriptorSet, DescriptorSet, PipelineLayoutAbstract},
@@ -16,7 +19,7 @@ use vulkano::{
 	VulkanObject,
 };
 
-const LAYERS: usize = 3;
+const LAYERS: usize = 7;
 static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
 pub struct Mesh {
@@ -42,8 +45,16 @@ impl Mesh {
 			Arc::new(white_pixel.clone()) as _,
 			Arc::new(white_pixel.clone()) as _,
 			Arc::new(white_pixel.clone()) as _,
+			Arc::new(white_pixel.clone()) as _,
+			Arc::new(white_pixel.clone()) as _,
+			Arc::new(white_pixel.clone()) as _,
+			Arc::new(white_pixel.clone()) as _,
 		];
 		let descs = [
+			make_desc_set(layout_desc.clone(), white_pixel.image().clone(), sampler.clone()),
+			make_desc_set(layout_desc.clone(), white_pixel.image().clone(), sampler.clone()),
+			make_desc_set(layout_desc.clone(), white_pixel.image().clone(), sampler.clone()),
+			make_desc_set(layout_desc.clone(), white_pixel.image().clone(), sampler.clone()),
 			make_desc_set(layout_desc.clone(), white_pixel.image().clone(), sampler.clone()),
 			make_desc_set(layout_desc.clone(), white_pixel.image().clone(), sampler.clone()),
 			make_desc_set(layout_desc.clone(), white_pixel.image().clone(), sampler.clone()),
@@ -52,6 +63,7 @@ impl Mesh {
 			layout_desc,
 			sampler,
 			mesh_data: None,
+			range: 0..0,
 			transform: Transform::default(),
 			textures,
 			descs,
@@ -77,6 +89,7 @@ pub struct MeshInner {
 	layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
 	sampler: Arc<Sampler>,
 	mesh_data: Option<Arc<MeshData>>,
+	range: Range<usize>,
 	transform: Transform,
 	textures: [Arc<dyn Texture>; LAYERS],
 	descs: [Arc<dyn DescriptorSet + Send + Sync>; LAYERS],
@@ -96,6 +109,14 @@ impl MeshInner {
 
 	pub fn set_mesh_data(&mut self, mesh_data: Option<Arc<MeshData>>) {
 		self.mesh_data = mesh_data;
+	}
+
+	pub fn range(&self) -> Range<usize> {
+		self.range.clone()
+	}
+
+	pub fn set_range(&mut self, range: Range<usize>) {
+		self.range = range;
 	}
 
 	pub fn set_tex(&mut self, tex_i: usize, tex: Arc<dyn Texture + Send + Sync>) {

@@ -11,7 +11,7 @@ pub struct TargetTexture {
 	image: Arc<dyn ImageViewAccess + Send + Sync>,
 }
 impl TargetTexture {
-	pub(crate) fn new<F>(device: Arc<Device>, dimensions: [u32; 2], format: F) -> Result<Self, ImageCreationError>
+	pub fn new<F>(device: Arc<Device>, dimensions: [u32; 2], format: F) -> Result<Self, ImageCreationError>
 	where
 		F: FormatDesc + Send + Sync + 'static,
 	{

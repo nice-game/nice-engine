@@ -1,4 +1,5 @@
 use std::mem;
+use vulkano::format::Format::{self, *};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
@@ -109,6 +110,17 @@ pub enum GGPixelFormat {
 
 	PFMT_INVALID,
 }
+impl Into<Format> for GGPixelFormat {
+	fn into(self) -> Format {
+		match self {
+			Self::PFMT_RGBA8_UNORM => R8G8B8A8Unorm,
+			Self::PFMT_RGBA8_SRGB => R8G8B8A8Srgb,
+			Self::PFMT_RGBA32F => R32G32B32A32Sfloat,
+			Self::PFMT_RGBA16F => R16G16B16A16Sfloat,
+			_ => panic!("{:?} not supported", self),
+		}
+	}
+}
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -130,4 +142,33 @@ pub enum GGImageUsage {
 	IMG_USAGE_TARGET,
 	IMG_USAGE_OVERLAY,
 	IMG_USAGE_GLYPH,
+}
+
+// #[allow(non_camel_case_types)]
+// #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+// #[repr(C)]
+// pub enum GGMaterialLayer {
+// 	MATL_SURFACE_COLOR,
+// 	MATL_SURFACE_FINISH,
+// 	MATL_AMBIENT_OCCLUSION,
+// 	MATL_LIGHTMAP_FLAT,
+// 	MATL_LIGHTMAP_ANGLE0,
+// 	MATL_LIGHTMAP_ANGLE1,
+// 	MATL_LIGHTMAP_ANGLE2,
+// }
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(C)]
+pub enum GGTextOrigin {
+	TEXT_BASELINE,
+	TEXT_TOP_LEFT,
+	TEXT_TOP,
+	TEXT_TOP_RIGHT,
+	TEXT_LEFT,
+	TEXT_CENTER,
+	TEXT_RIGHT,
+	TEXT_BOTTOM_LEFT,
+	TEXT_BOTTOM,
+	TEXT_BOTTOM_RIGHT,
 }

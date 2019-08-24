@@ -110,7 +110,7 @@ impl Pipeline for DeferredPipeline {
 								pipeline,
 								&dynamic,
 								vertex_buffer,
-								buf.clone().into_buffer_slice().slice(0..mesh.mesh_data().unwrap().indices().len()).unwrap(),
+								buf.clone().into_buffer_slice().slice(mesh.range()).unwrap(),
 								sets,
 								pc,
 							)
@@ -122,7 +122,7 @@ impl Pipeline for DeferredPipeline {
 								pipeline,
 								&dynamic,
 								vertex_buffer,
-								buf.clone().into_buffer_slice().slice(0..mesh.mesh_data().unwrap().indices().len()).unwrap(),
+								buf.clone().into_buffer_slice().slice(mesh.range()).unwrap(),
 								sets,
 								pc,
 							)

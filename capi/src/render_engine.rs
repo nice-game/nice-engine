@@ -48,6 +48,7 @@ pub const RENDER_ENGINE: GGD_RenderEngine = GGD_RenderEngine {
 	MeshInstance_Alloc,
 	MeshInstance_Free,
 	MeshInstance_SetMeshData,
+	MeshInstance_SetMeshSubset,
 	MeshInstance_SetImageData,
 	MeshInstance_SetAnimation,
 	MeshInstance_SetTransform,

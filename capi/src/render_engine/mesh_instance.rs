@@ -26,6 +26,13 @@ pub unsafe extern fn MeshInstance_SetMeshData(this: *mut GGD_MeshInstance, mesh:
 }
 
 #[allow(non_snake_case)]
+pub unsafe extern fn MeshInstance_SetMeshSubset(this: *mut GGD_MeshInstance, offset: u32, count: u32) {
+	let this = &mut *this;
+
+	this.lock().unwrap().set_range(offset as usize..(offset + count) as usize);
+}
+
+#[allow(non_snake_case)]
 pub unsafe extern fn MeshInstance_SetImageData(this: *mut GGD_MeshInstance, image: *mut GGD_ImageData, layer: i32) {
 	let this = &mut *this;
 	let image = &mut *image;
