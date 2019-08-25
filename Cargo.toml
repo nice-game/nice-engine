@@ -8,6 +8,7 @@ edition = "2018"
 members = ["capi", "examples/sandbox"]
 
 [dependencies]
+array-init = "0.1.0"
 atom = "0.3.5"
 byteorder = "1.3.2"
 cgmath = "0.17.0"

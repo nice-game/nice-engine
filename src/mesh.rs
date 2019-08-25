@@ -5,6 +5,7 @@ use crate::{
 	transform::Transform,
 	Context,
 };
+use array_init::array_init;
 use std::{
 	ops::Range,
 	sync::{
@@ -41,24 +42,8 @@ impl Mesh {
 		white_pixel: ImmutableTexture,
 		sampler: Arc<Sampler>,
 	) -> Self {
-		let textures = [
-			Arc::new(white_pixel.clone()) as _,
-			Arc::new(white_pixel.clone()) as _,
-			Arc::new(white_pixel.clone()) as _,
-			Arc::new(white_pixel.clone()) as _,
-			Arc::new(white_pixel.clone()) as _,
-			Arc::new(white_pixel.clone()) as _,
-			Arc::new(white_pixel.clone()) as _,
-		];
-		let descs = [
-			make_desc_set(layout_desc.clone(), white_pixel.image().clone(), sampler.clone()),
-			make_desc_set(layout_desc.clone(), white_pixel.image().clone(), sampler.clone()),
-			make_desc_set(layout_desc.clone(), white_pixel.image().clone(), sampler.clone()),
-			make_desc_set(layout_desc.clone(), white_pixel.image().clone(), sampler.clone()),
-			make_desc_set(layout_desc.clone(), white_pixel.image().clone(), sampler.clone()),
-			make_desc_set(layout_desc.clone(), white_pixel.image().clone(), sampler.clone()),
-			make_desc_set(layout_desc.clone(), white_pixel.image().clone(), sampler.clone()),
-		];
+		let textures = array_init(|_| Arc::new(white_pixel.clone()) as _);
+		let descs = array_init(|_| make_desc_set(layout_desc.clone(), &textures, sampler.clone()));
 		let inner = Arc::new(Mutex::new(MeshInner {
 			layout_desc,
 			sampler,
@@ -70,7 +55,6 @@ impl Mesh {
 		}));
 
 		let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-		println!("{}", id);
 		mesh_group.lock().unwrap().insert(id, inner.clone());
 		Self { id, mesh_group, inner }
 	}
@@ -91,7 +75,7 @@ pub struct MeshInner {
 	mesh_data: Option<Arc<MeshData>>,
 	range: Range<usize>,
 	transform: Transform,
-	textures: [Arc<dyn Texture>; LAYERS],
+	textures: [Arc<dyn Texture + Send + Sync + 'static>; LAYERS],
 	descs: [Arc<dyn DescriptorSet + Send + Sync>; LAYERS],
 }
 impl MeshInner {
@@ -120,8 +104,8 @@ impl MeshInner {
 	}
 
 	pub fn set_tex(&mut self, tex_i: usize, tex: Arc<dyn Texture + Send + Sync>) {
-		self.descs[tex_i] = make_desc_set(self.layout_desc.clone(), tex.image().clone(), self.sampler.clone());
 		self.textures[tex_i] = tex;
+		self.descs[tex_i] = make_desc_set(self.layout_desc.clone(), &self.textures, self.sampler.clone());
 	}
 
 	pub(crate) fn refresh(&mut self) {
@@ -129,8 +113,7 @@ impl MeshInner {
 			let lhs_id = self.textures[i].image().inner().internal_object();
 			let rhs_id = self.descs[i].image(0).unwrap().0.inner().internal_object();
 			if lhs_id != rhs_id {
-				self.descs[i] =
-					make_desc_set(self.layout_desc.clone(), self.textures[i].image().clone(), self.sampler.clone());
+				self.descs[i] = make_desc_set(self.layout_desc.clone(), &self.textures, self.sampler.clone());
 			}
 		}
 	}
@@ -140,18 +123,29 @@ impl MeshInner {
 	}
 }
 
-fn make_desc_set<L, T: ImageViewAccess>(
+fn make_desc_set<L>(
 	layout: L,
-	image_view: T,
+	image_views: &[Arc<dyn Texture + Send + Sync>; LAYERS],
 	sampler: Arc<Sampler>,
 ) -> Arc<dyn DescriptorSet + Send + Sync>
 where
 	L: PipelineLayoutAbstract + Send + Sync + 'static,
-	T: ImageViewAccess + Send + Sync + 'static,
 {
 	Arc::new(
 		PersistentDescriptorSet::start(layout, 0)
-			.add_sampled_image(image_view, sampler.clone())
+			.add_sampled_image(image_views[0].image().clone(), sampler.clone())
+			.unwrap()
+			.add_sampled_image(image_views[1].image().clone(), sampler.clone())
+			.unwrap()
+			.add_sampled_image(image_views[2].image().clone(), sampler.clone())
+			.unwrap()
+			.add_sampled_image(image_views[3].image().clone(), sampler.clone())
+			.unwrap()
+			.add_sampled_image(image_views[4].image().clone(), sampler.clone())
+			.unwrap()
+			.add_sampled_image(image_views[5].image().clone(), sampler.clone())
+			.unwrap()
+			.add_sampled_image(image_views[6].image().clone(), sampler.clone())
 			.unwrap()
 			.build()
 			.unwrap(),

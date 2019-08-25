@@ -1,6 +1,6 @@
 use super::{
 	context::DeferredPipelineContextInner, geom_fshader, geom_vshader, light_fshader, light_vshader, swap_fshader,
-	swap_vshader, Vert2D, DEPTH_FORMAT, DIFFUSE_FORMAT, LIGHT_FORMAT, NORMAL_FORMAT, POSITION_FORMAT,
+	swap_vshader, Vert2D, COLOR_FORMAT, DEPTH_FORMAT, LIGHT_FORMAT, NORMAL_FORMAT, POSITION_FORMAT,
 };
 use crate::{
 	camera::Camera,
@@ -235,7 +235,7 @@ fn create_gbuffers(device: &Arc<Device>, dimensions: [u32; 2]) -> GBuffers {
 	let depth =
 		Arc::new(AttachmentImage::transient_input_attachment(device.clone(), dimensions, DEPTH_FORMAT).unwrap());
 	let diffuse =
-		Arc::new(AttachmentImage::transient_input_attachment(device.clone(), dimensions, DIFFUSE_FORMAT).unwrap());
+		Arc::new(AttachmentImage::transient_input_attachment(device.clone(), dimensions, COLOR_FORMAT).unwrap());
 	let normal =
 		Arc::new(AttachmentImage::transient_input_attachment(device.clone(), dimensions, NORMAL_FORMAT).unwrap());
 	let position =

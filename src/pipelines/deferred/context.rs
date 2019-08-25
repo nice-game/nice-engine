@@ -1,6 +1,6 @@
 use super::{
 	geom_fshader, geom_vshader, light_fshader, light_vshader, pipeline::DeferredPipeline, swap_fshader, swap_vshader,
-	Vert2D, DEPTH_FORMAT, DIFFUSE_FORMAT, LIGHT_FORMAT, NORMAL_FORMAT, POSITION_FORMAT,
+	Vert2D, COLOR_FORMAT, DEPTH_FORMAT, LIGHT_FORMAT, NORMAL_FORMAT, POSITION_FORMAT,
 };
 use crate::{
 	pipelines::{Pipeline, PipelineContext},
@@ -26,14 +26,14 @@ impl DeferredPipelineContext {
 				device.clone(),
 				attachments: {
 					depth:		{ load: Clear,	store: DontCare,	format: DEPTH_FORMAT,		samples: 1, },
-					diffuse:	{ load: Clear,	store: DontCare,	format: DIFFUSE_FORMAT,		samples: 1, },
+					diffuse:	{ load: Clear,	store: DontCare,	format: COLOR_FORMAT,		samples: 1, },
 					normal:		{ load: Clear,	store: DontCare,	format: NORMAL_FORMAT,		samples: 1, },
 					position:	{ load: Clear,	store: DontCare,	format: POSITION_FORMAT,	samples: 1, },
 					light:		{ load: Clear,	store: DontCare,	format: LIGHT_FORMAT,		samples: 1, },
 					color:		{ load: Clear,	store: Store,		format: SWAP_FORMAT,		samples: 1, }
 				},
 				passes: [
-					{ color: [diffuse, normal, position], depth_stencil: {depth}, input: [] },
+					{ color: [diffuse, light, normal, position], depth_stencil: {depth}, input: [] },
 					{ color: [light], depth_stencil: {}, input: [diffuse, normal, position] },
 					{ color: [color], depth_stencil: {}, input: [depth, light] }
 				]
