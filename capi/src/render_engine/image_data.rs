@@ -8,6 +8,7 @@ use crate::{
 };
 use half::f16;
 use libc::c_void;
+use log::trace;
 use nice_engine::texture::{ImmutableTexture, TargetTexture};
 use std::{ptr::null, slice, sync::Arc};
 use vulkano::{
@@ -23,6 +24,8 @@ pub unsafe extern fn ImageData_Alloc(
 	format: GGPixelFormat,
 	buffer: *const c_void,
 ) -> *mut GGD_ImageData {
+	trace!("ImageData_Alloc");
+
 	match usage {
 		IMG_USAGE_STATIC | IMG_USAGE_GLYPH => {
 			let ret = Box::into_raw(Box::new(GGD_ImageData::Uninitialized { usage, x, y, format }));
@@ -41,11 +44,15 @@ pub unsafe extern fn ImageData_Alloc(
 
 #[allow(non_snake_case)]
 pub unsafe extern fn ImageData_Free(this: *mut GGD_ImageData) {
+	trace!("ImageData_Free");
+
 	Box::from_raw(this);
 }
 
 #[allow(non_snake_case)]
 pub unsafe extern fn ImageData_SetPixelData(this: *mut GGD_ImageData, buffer: *const c_void, mipmap: i32) -> i32 {
+	trace!("ImageData_SetPixelData");
+
 	let this = &mut *this;
 
 	if mipmap != 0 {
@@ -95,11 +102,15 @@ pub unsafe extern fn ImageData_SetPixelData(this: *mut GGD_ImageData, buffer: *c
 // buffer can be null. x, y, and format are in/out params.
 #[allow(non_snake_case)]
 pub extern fn ImageData_GetPixelData(_this: *mut GGD_ImageData, _buffer: *mut c_void, _mipmap: i32) -> i32 {
+	trace!("ImageData_GetPixelData");
+
 	unimplemented!();
 }
 
 #[allow(non_snake_case)]
-pub extern fn ImageData_DrawCamera(_dst: *mut GGD_ImageData, _src: *mut GGD_Camera) {}
+pub extern fn ImageData_DrawCamera(_dst: *mut GGD_ImageData, _src: *mut GGD_Camera) {
+	trace!("ImageData_DrawCamera");
+}
 
 #[allow(non_snake_case)]
 pub extern fn ImageData_DrawImage(
@@ -110,6 +121,7 @@ pub extern fn ImageData_DrawImage(
 	_w: f32,
 	_h: f32,
 ) {
+	trace!("ImageData_DrawImage");
 }
 
 #[allow(non_snake_case)]
@@ -121,4 +133,5 @@ pub extern fn ImageData_DrawText(
 	_origin: GGTextOrigin,
 	_text: *const char,
 ) {
+	trace!("ImageData_DrawText");
 }

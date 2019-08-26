@@ -22,6 +22,7 @@ pub(crate) trait PipelineContext {
 		dimensions: [u32; 2],
 	) -> Box<dyn Pipeline>;
 	fn layout_desc(&self) -> &Arc<dyn PipelineLayoutAbstract + Send + Sync>;
+	fn swap_layout_desc(&self) -> &Arc<dyn PipelineLayoutAbstract + Send + Sync>;
 }
 
 pub(crate) trait Pipeline {

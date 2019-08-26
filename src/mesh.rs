@@ -1,11 +1,6 @@
-use crate::{
-	mesh_data::MeshData,
-	mesh_group::MeshGroup,
-	texture::{ImmutableTexture, Texture},
-	transform::Transform,
-	Context,
-};
+use crate::{mesh_data::MeshData, mesh_group::MeshGroup, texture::Texture, transform::Transform, Context};
 use array_init::array_init;
+use log::trace;
 use std::{
 	ops::Range,
 	sync::{
@@ -30,19 +25,21 @@ pub struct Mesh {
 }
 impl Mesh {
 	pub fn new(ctx: &Context, mesh_group: Arc<MeshGroup>) -> Self {
+		trace!("Mesh::new");
+
 		let layout_desc = ctx.pipeline_ctx().layout_desc().clone();
-		let white_pixel = ctx.resources().lock().unwrap().white_pixel().clone();
-		let sampler = ctx.resources().lock().unwrap().sampler().clone();
-		Self::new_inner(mesh_group, layout_desc, white_pixel, sampler)
+		let resources = ctx.resources().lock().unwrap();
+		let sampler = resources.sampler().clone();
+		Self::new_inner(mesh_group, layout_desc, resources.white_pixel(), sampler)
 	}
 
 	pub(crate) fn new_inner(
 		mesh_group: Arc<MeshGroup>,
 		layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
-		white_pixel: ImmutableTexture,
+		white_pixel: &Arc<dyn Texture + Send + Sync>,
 		sampler: Arc<Sampler>,
 	) -> Self {
-		let textures = array_init(|_| Arc::new(white_pixel.clone()) as _);
+		let textures = array_init(|_| white_pixel.clone() as _);
 		let descs = array_init(|_| make_desc_set(layout_desc.clone(), &textures, sampler.clone()));
 		let inner = Arc::new(Mutex::new(MeshInner {
 			layout_desc,
@@ -55,7 +52,7 @@ impl Mesh {
 		}));
 
 		let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-		mesh_group.lock().unwrap().insert(id, inner.clone());
+		mesh_group.meshes().lock().unwrap().insert(id, inner.clone());
 		Self { id, mesh_group, inner }
 	}
 
@@ -65,7 +62,7 @@ impl Mesh {
 }
 impl Drop for Mesh {
 	fn drop(&mut self) {
-		self.mesh_group.lock().unwrap().remove(&self.id);
+		self.mesh_group.meshes().lock().unwrap().remove(&self.id);
 	}
 }
 

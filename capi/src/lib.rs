@@ -6,6 +6,7 @@ use self::{game_graph_driver::GGD_DriverContext, render_engine::RENDER_ENGINE};
 use crate::game_graph::GGDriverStatus::{self, *};
 use libc::strlen;
 use nice_engine::Version;
+use simplelog::{LevelFilter, SimpleLogger};
 use std::{panic, ptr::null, slice, str};
 
 const GGD_API_VERSION: u64 = 0;
@@ -16,7 +17,7 @@ mod ctx {
 
 	static mut CTX: Option<Arc<Context>> = None;
 
-	pub unsafe fn get() -> &'static mut Arc<Context> {
+	pub unsafe fn get() -> &'static Arc<Context> {
 		match CTX {
 			Some(ref mut ctx) => &mut *ctx,
 			None => panic!("tried to access uninitialized context. GGD_DriverMain must be called first."),
@@ -34,6 +35,7 @@ mod ctx {
 #[no_mangle]
 pub unsafe extern fn GGD_DriverMain(X: *mut GGD_DriverContext) -> GGDriverStatus {
 	panic::set_hook(Box::new(|info| println!("{}", info)));
+	SimpleLogger::init(LevelFilter::Debug, simplelog::Config::default()).unwrap();
 
 	let X = &*X;
 

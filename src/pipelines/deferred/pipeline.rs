@@ -89,7 +89,7 @@ impl Pipeline for DeferredPipeline {
 				.unwrap()
 				.begin_render_pass(self.framebuffers[image_num].clone(), false, clear_values)
 				.unwrap();
-		for mesh in cam.mesh_group().lock().unwrap().values() {
+		for mesh in cam.mesh_group().meshes().lock().unwrap().values() {
 			let mut mesh = mesh.lock().unwrap();
 			mesh.refresh();
 
@@ -169,7 +169,7 @@ impl Pipeline for DeferredPipeline {
 				&Default::default(),
 				vec![self.ctx.vertices.clone()],
 				self.ctx.indices.clone(),
-				self.gbuffers_desc.clone(),
+				(self.gbuffers_desc.clone(), cam.mesh_group().skybox().lock().unwrap().clone()),
 				swap_fshader::ty::PushConsts { Exposure: cam.exposure },
 			)
 			.unwrap();

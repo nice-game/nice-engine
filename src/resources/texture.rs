@@ -1,3 +1,4 @@
+use crate::texture::Texture;
 use crate::texture::ImmutableTexture;
 use byteorder::{ReadBytesExt, LE};
 use log::debug;
@@ -12,7 +13,7 @@ use vulkano::{
 pub(crate) fn from_nice_texture(
 	queue: &Arc<Queue>,
 	path: impl AsRef<Path> + Clone + Send,
-) -> (ImmutableTexture, impl GpuFuture) {
+) -> (Arc<dyn Texture + Send + Sync>, impl GpuFuture) {
 	let mut fp = File::open(path).unwrap();
 
 	let mut magic_number = [0; 3];
@@ -49,5 +50,5 @@ pub(crate) fn from_nice_texture(
 	let (tex, tex_future) =
 		ImmutableTexture::from_buffer(queue.clone(), pixbuf, [width as u32, height as u32], fmt).unwrap();
 
-	(tex, Box::new(tex_future))
+	(Arc::new(tex), Box::new(tex_future))
 }

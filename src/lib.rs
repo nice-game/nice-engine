@@ -86,7 +86,7 @@ impl Context {
 
 		#[cfg(debug_assertions)]
 		let layers = hashset! {
-			"VK_LAYER_KHRONOS_validation".to_owned(),
+			// "VK_LAYER_KHRONOS_validation".to_owned(),
 			"VK_LAYER_LUNARG_monitor".to_owned(),
 		};
 		#[cfg(not(debug_assertions))]
@@ -128,8 +128,7 @@ impl Context {
 		.expect("failed to create device");
 		let queue = queues.next().unwrap();
 
-		let (deferred_def, deferred_def_future) = DeferredPipelineDef::make_context(&device, &queue);
-		let pipeline_ctx = deferred_def;
+		let (pipeline_ctx, pipeline_ctx_future) = DeferredPipelineDef::make_context(&device, &queue);
 
 		let world = World::new();
 
@@ -147,7 +146,7 @@ impl Context {
 				world,
 				resources,
 			}),
-			deferred_def_future.join(resources_future),
+			pipeline_ctx_future.join(resources_future),
 		))
 	}
 

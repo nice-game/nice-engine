@@ -120,9 +120,9 @@ pub struct GGD_RenderEngine {
 	pub FontData_SetGlyph:
 		extern fn(image: *mut GGD_FontData, codepoint: u32, img: *mut GGD_ImageData, basex: f32, basey: f32),
 
-	pub MeshGroup_Alloc: extern fn() -> *mut GGD_MeshGroup,
+	pub MeshGroup_Alloc: unsafe extern fn() -> *mut GGD_MeshGroup,
 	pub MeshGroup_Free: unsafe extern fn(*mut GGD_MeshGroup),
-	pub MeshGroup_SetSky: extern fn(*mut GGD_MeshGroup, *mut GGD_ImageData),
+	pub MeshGroup_SetSky: unsafe extern fn(*mut GGD_MeshGroup, *mut GGD_ImageData),
 
 	pub MeshInstance_Alloc: unsafe extern fn(*mut GGD_MeshGroup) -> *mut GGD_MeshInstance,
 	pub MeshInstance_Free: unsafe extern fn(*mut GGD_MeshInstance),
@@ -133,7 +133,7 @@ pub struct GGD_RenderEngine {
 	pub MeshInstance_SetTransform: unsafe extern fn(*mut GGD_MeshInstance, pose: *const GGTransform),
 	pub MeshInstance_SetBoneTransform: extern fn(*mut GGD_MeshInstance, bone: u32, pose: *const GGTransform),
 
-	pub Camera_Alloc: extern fn() -> *mut GGD_Camera,
+	pub Camera_Alloc: unsafe extern fn() -> *mut GGD_Camera,
 	pub Camera_Free: unsafe extern fn(*mut GGD_Camera),
 	pub Camera_SetPerspective: unsafe extern fn(*mut GGD_Camera, aspect: f32, fovy: f32, zNear: f32, zFar: f32),
 	pub Camera_SetOrthographic: Option<extern fn(*mut GGD_Camera, w: f32, h: f32, zNear: f32, zFar: f32)>,

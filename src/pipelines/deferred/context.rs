@@ -6,6 +6,7 @@ use crate::{
 	pipelines::{Pipeline, PipelineContext},
 	surface::SWAP_FORMAT,
 };
+use log::trace;
 use std::sync::Arc;
 use vulkano::{
 	buffer::{BufferAccess, BufferUsage, ImmutableBuffer, TypedBufferAccess},
@@ -102,7 +103,12 @@ impl PipelineContext for DeferredPipelineContext {
 	}
 
 	fn layout_desc(&self) -> &Arc<dyn PipelineLayoutAbstract + Send + Sync> {
+		trace!("DeferredPipelineContext::layout_desc");
 		&self.inner.layout_desc
+	}
+
+	fn swap_layout_desc(&self) -> &Arc<dyn PipelineLayoutAbstract + Send + Sync> {
+		&self.inner.swap_layout_desc
 	}
 }
 

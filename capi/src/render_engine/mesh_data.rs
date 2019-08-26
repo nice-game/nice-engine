@@ -7,6 +7,7 @@ use crate::{
 	game_graph_driver::GGD_MeshData,
 };
 use libc::c_void;
+use log::trace;
 use nice_engine::{
 	mesh_data::{MeshData, Pntl_32F},
 	GpuFuture,
@@ -26,6 +27,8 @@ pub unsafe extern fn MeshData_Alloc_Polygon(
 	indexCount: u32,
 	indexFormat: GGIndexFormat,
 ) -> *mut GGD_MeshData {
+	trace!("MeshData_Alloc_Polygon");
+
 	let queue = ctx::get().queue();
 
 	let (vertices, vertices_future): (Arc<dyn BufferAccess + Send + Sync>, _) = match vertexFormat {
@@ -68,5 +71,7 @@ pub unsafe extern fn MeshData_Alloc_Polygon(
 
 #[allow(non_snake_case)]
 pub unsafe extern fn MeshData_Free(this: *mut GGD_MeshData) {
+	trace!("MeshData_Free");
+
 	Box::from_raw(this);
 }

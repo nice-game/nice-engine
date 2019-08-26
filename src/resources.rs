@@ -30,7 +30,7 @@ pub struct Resources {
 	// TODO: move to Context
 	sampler: Arc<Sampler>,
 	// TODO: move to Context
-	white_pixel: ImmutableTexture,
+	white_pixel: Arc<dyn Texture + Send + Sync>,
 	meshes: HashMap<PathBuf, Arc<Model>>,
 	textures: HashMap<PathBuf, Arc<TextureResource>>,
 }
@@ -63,6 +63,7 @@ impl Resources {
 			Format::R8G8B8A8Unorm,
 		)
 		.unwrap();
+		let white_pixel = Arc::new(white_pixel);
 
 		let meshes = HashMap::new();
 		let textures = HashMap::new();
@@ -85,8 +86,7 @@ impl Resources {
 			model
 		});
 
-		let mesh =
-			Mesh::new_inner(mesh_group, self.layout_desc.clone(), self.white_pixel.clone(), self.sampler.clone());
+		let mesh = Mesh::new_inner(mesh_group, self.layout_desc.clone(), &self.white_pixel, self.sampler.clone());
 		{
 			let mut mesh_inner = mesh.lock().unwrap();
 			mesh_inner.set_mesh_data(Some(model.mesh_data.clone()));
@@ -108,7 +108,7 @@ impl Resources {
 		&self.sampler
 	}
 
-	pub(crate) fn white_pixel(&self) -> &ImmutableTexture {
+	pub(crate) fn white_pixel(&self) -> &Arc<dyn Texture + Send + Sync> {
 		&self.white_pixel
 	}
 }
@@ -120,7 +120,7 @@ fn load_tex(queue: Arc<Queue>, res: Arc<TextureResource>, path: impl AsRef<Path>
 		.spawn(lazy(move |_| {
 			let (tex, tex_future) = texture::from_nice_texture(&queue, path);
 			tex_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
-			res.tex.set_if_none(Arc::new(tex));
+			res.tex.set_if_none(Box::new(tex));
 			log::debug!("loaded image");
 		}))
 		.unwrap();
@@ -132,8 +132,8 @@ struct Model {
 }
 
 struct TextureResource {
-	tex: AtomSetOnce<Arc<ImmutableTexture>>,
-	white_pixel: ImmutableTexture,
+	tex: AtomSetOnce<Box<Arc<dyn Texture + Send + Sync>>>,
+	white_pixel: Arc<dyn Texture + Send + Sync>,
 }
 impl Texture for TextureResource {
 	fn image(&self) -> &Arc<dyn ImageViewAccess + Send + Sync> {

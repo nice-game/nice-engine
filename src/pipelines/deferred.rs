@@ -149,13 +149,15 @@ layout(input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput g_
 layout(input_attachment_index = 3, set = 0, binding = 3) uniform subpassInput g_position;
 layout(input_attachment_index = 4, set = 0, binding = 4) uniform subpassInput g_light;
 
+layout(set = 1, binding = 0) uniform sampler2D sky;
+
 layout(push_constant) uniform PushConsts {
 	float Exposure;
 } pc;
 
 vec3 skybox() {
 	vec3 skydir = vec3(dir.xy, 1.0);
-	return vec3(0.2468004196015504, 0.6253447208024265, 0.8355277914608409);
+	return texture(sky, skydir.xy).xyz;
 }
 
 void main() {

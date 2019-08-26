@@ -4,9 +4,12 @@ use crate::{
 	game_graph_driver::{GGD_ImageData, GGD_MeshData, GGD_MeshGroup, GGD_MeshInstance},
 };
 use cgmath::{vec4, Quaternion};
+use log::trace;
 
 #[allow(non_snake_case)]
 pub unsafe extern fn MeshInstance_Alloc(group: *mut GGD_MeshGroup) -> *mut GGD_MeshInstance {
+	trace!("MeshInstance_Alloc");
+
 	let group = &mut *group;
 
 	Box::into_raw(Box::new(GGD_MeshInstance::new(ctx::get(), group.clone())))
@@ -14,11 +17,15 @@ pub unsafe extern fn MeshInstance_Alloc(group: *mut GGD_MeshGroup) -> *mut GGD_M
 
 #[allow(non_snake_case)]
 pub unsafe extern fn MeshInstance_Free(this: *mut GGD_MeshInstance) {
+	trace!("MeshInstance_Free");
+
 	Box::from_raw(this);
 }
 
 #[allow(non_snake_case)]
 pub unsafe extern fn MeshInstance_SetMeshData(this: *mut GGD_MeshInstance, mesh: *mut GGD_MeshData, _index: u32) {
+	trace!("MeshInstance_SetMeshData");
+
 	let this = &mut *this;
 	let mesh = &mut *mesh;
 
@@ -27,6 +34,8 @@ pub unsafe extern fn MeshInstance_SetMeshData(this: *mut GGD_MeshInstance, mesh:
 
 #[allow(non_snake_case)]
 pub unsafe extern fn MeshInstance_SetMeshSubset(this: *mut GGD_MeshInstance, offset: u32, count: u32) {
+	trace!("MeshInstance_SetMeshSubset");
+
 	let this = &mut *this;
 
 	this.lock().unwrap().set_range(offset as usize..(offset + count) as usize);
@@ -34,6 +43,8 @@ pub unsafe extern fn MeshInstance_SetMeshSubset(this: *mut GGD_MeshInstance, off
 
 #[allow(non_snake_case)]
 pub unsafe extern fn MeshInstance_SetImageData(this: *mut GGD_MeshInstance, image: *mut GGD_ImageData, layer: i32) {
+	trace!("MeshInstance_SetImageData");
+
 	let this = &mut *this;
 	let image = &mut *image;
 
@@ -49,10 +60,13 @@ pub extern fn MeshInstance_SetAnimation(
 	_lastIndex: u32,
 	_frameRate: f32,
 ) {
+	trace!("MeshInstance_SetAnimation");
 }
 
 #[allow(non_snake_case)]
 pub unsafe extern fn MeshInstance_SetTransform(this: *mut GGD_MeshInstance, transform: *const GGTransform) {
+	trace!("MeshInstance_SetTransform");
+
 	let this = &mut *this;
 	let transform = &*transform;
 
@@ -64,4 +78,6 @@ pub unsafe extern fn MeshInstance_SetTransform(this: *mut GGD_MeshInstance, tran
 }
 
 #[allow(non_snake_case)]
-pub extern fn MeshInstance_SetBoneTransform(_this: *mut GGD_MeshInstance, _bone: u32, _pose: *const GGTransform) {}
+pub extern fn MeshInstance_SetBoneTransform(_this: *mut GGD_MeshInstance, _bone: u32, _pose: *const GGTransform) {
+	trace!("MeshInstance_SetBoneTransform");
+}

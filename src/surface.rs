@@ -137,7 +137,7 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		let prev_frame_end = None;
 
 		let world = ctx.world().clone();
-		let camera = Arc::default();
+		let camera = Arc::new(Mutex::new(Camera::new(ctx)));
 
 		Self { device, queue, surface, swapchain, pipeline, prev_frame_end, world, camera }
 	}
