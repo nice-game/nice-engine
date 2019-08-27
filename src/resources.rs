@@ -13,7 +13,7 @@ use futures::{future::lazy, task::SpawnExt};
 use std::{
 	collections::HashMap,
 	path::{Path, PathBuf},
-	sync::Arc,
+	sync::{Arc, Mutex},
 };
 use vulkano::{
 	descriptor::PipelineLayoutAbstract,
@@ -27,12 +27,10 @@ use vulkano::{
 pub struct Resources {
 	queue: Arc<Queue>,
 	layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
-	// TODO: move to Context
 	sampler: Arc<Sampler>,
-	// TODO: move to Context
 	white_pixel: Arc<dyn Texture + Send + Sync>,
-	meshes: HashMap<PathBuf, Arc<Model>>,
-	textures: HashMap<PathBuf, Arc<TextureResource>>,
+	meshes: Mutex<HashMap<PathBuf, Arc<Model>>>,
+	textures: Mutex<HashMap<PathBuf, Arc<TextureResource>>>,
 }
 impl Resources {
 	pub(crate) fn new(
@@ -65,13 +63,14 @@ impl Resources {
 		.unwrap();
 		let white_pixel = Arc::new(white_pixel);
 
-		let meshes = HashMap::new();
-		let textures = HashMap::new();
+		let meshes = Mutex::default();
+		let textures = Mutex::default();
 		(Self { queue, layout_desc, sampler, white_pixel, meshes, textures }, white_pixel_future)
 	}
 
 	pub fn get_model(&mut self, mesh_group: Arc<MeshGroup>, path: impl AsRef<Path> + Clone + Send + 'static) -> Mesh {
-		let model = self.meshes.get(path.as_ref()).cloned().unwrap_or_else(|| {
+		let path = path.as_ref();
+		let model = self.meshes.lock().unwrap().get(path).cloned().unwrap_or_else(|| {
 			let (mesh_data, _mats, mesh_data_future) = model::from_nice_model(&self.queue, path.clone());
 			mesh_data_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 			// let mats = mats
@@ -82,7 +81,7 @@ impl Resources {
 			// 	})
 			// 	.collect();
 			let model = Arc::new(Model { mesh_data /* mats */ });
-			self.meshes.insert(path.as_ref().to_owned(), model.clone());
+			self.meshes.lock().unwrap().insert(path.to_owned(), model.clone());
 			model
 		});
 
@@ -96,10 +95,10 @@ impl Resources {
 	}
 
 	pub fn get_texture(&mut self, path: impl AsRef<Path> + Clone + Send + 'static) -> Arc<dyn Texture> {
-		self.textures.get(path.as_ref()).cloned().unwrap_or_else(|| {
+		self.textures.lock().unwrap().get(path.as_ref()).cloned().unwrap_or_else(|| {
 			let tex = Arc::new(TextureResource { tex: AtomSetOnce::empty(), white_pixel: self.white_pixel.clone() });
 			load_tex(self.queue.clone(), tex.clone(), path.clone());
-			self.textures.insert(path.as_ref().to_owned(), tex.clone());
+			self.textures.lock().unwrap().insert(path.as_ref().to_owned(), tex.clone());
 			tex
 		})
 	}

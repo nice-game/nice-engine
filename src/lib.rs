@@ -19,10 +19,7 @@ use crate::{
 };
 use log::info;
 use maplit::hashset;
-use std::{
-	collections::HashSet,
-	sync::{Arc, Mutex},
-};
+use std::{collections::HashSet, sync::Arc};
 #[cfg(debug_assertions)]
 use vulkano::instance::debug::DebugCallback;
 use vulkano::{
@@ -46,8 +43,7 @@ pub struct Context {
 	queue: Arc<Queue>,
 	pipeline_ctx: Box<dyn PipelineContext>,
 	world: Arc<World>,
-	// TODO: move mutex inside Resources
-	resources: Mutex<Resources>,
+	resources: Resources,
 }
 impl Context {
 	pub fn new(
@@ -133,7 +129,6 @@ impl Context {
 		let world = World::new();
 
 		let (resources, resources_future) = Resources::new(queue.clone(), pipeline_ctx.layout_desc().clone());
-		let resources = Mutex::new(resources);
 
 		Ok((
 			Arc::new(Self {
@@ -150,7 +145,7 @@ impl Context {
 		))
 	}
 
-	pub fn resources(&self) -> &Mutex<Resources> {
+	pub fn resources(&self) -> &Resources {
 		&self.resources
 	}
 

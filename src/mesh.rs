@@ -28,7 +28,7 @@ impl Mesh {
 		trace!("Mesh::new");
 
 		let layout_desc = ctx.pipeline_ctx().layout_desc().clone();
-		let resources = ctx.resources().lock().unwrap();
+		let resources = ctx.resources();
 		let sampler = resources.sampler().clone();
 		Self::new_inner(mesh_group, layout_desc, resources.white_pixel(), sampler)
 	}

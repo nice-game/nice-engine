@@ -17,7 +17,7 @@ pub struct MeshGroup {
 }
 impl MeshGroup {
 	pub fn new(ctx: &Context) -> Arc<Self> {
-		let resources = ctx.resources().lock().unwrap();
+		let resources = ctx.resources();
 		let swap_layout_desc = ctx.pipeline_ctx().swap_layout_desc().clone();
 		let white_pixel = resources.white_pixel().clone();
 		let sampler = resources.sampler().clone();
