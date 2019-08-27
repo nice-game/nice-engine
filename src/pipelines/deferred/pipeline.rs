@@ -76,12 +76,15 @@ impl Pipeline for DeferredPipeline {
 			[0.0; 4].into(),
 		];
 
-		let make_pc = |mesh: &MeshInner| geom_vshader::ty::PushConsts {
-			cam_proj: cam.projection().into(),
-			cam_pos: cam.transform().pos.into(),
-			cam_rot: cam.transform().rot.into(),
-			mesh_pos: mesh.transform().pos.into(),
-			mesh_rot: mesh.transform().rot.into(),
+		let make_pc = |mesh: &MeshInner| {
+			let transform = mesh.clone_transform();
+			geom_vshader::ty::PushConsts {
+				cam_proj: cam.projection().into(),
+				cam_pos: cam.transform().pos.into(),
+				cam_rot: cam.transform().rot.into(),
+				mesh_pos: transform.pos.into(),
+				mesh_rot: transform.rot.into(),
+			}
 		};
 
 		let mut command_buffer =
@@ -93,42 +96,42 @@ impl Pipeline for DeferredPipeline {
 			let mut mesh = mesh.lock().unwrap();
 			mesh.refresh();
 
-			if let Some(mesh_data) = mesh.mesh_data().as_ref() {
-				let pipeline = match mesh_data.topology() {
-					PrimitiveTopology::TriangleList => self.geom_pipeline_soup.clone(),
-					PrimitiveTopology::TriangleStrip => self.geom_pipeline_strip.clone(),
-					_ => unimplemented!(),
-				};
-				let dynamic = Default::default();
-				let vertex_buffer = vec![mesh_data.vertices().clone()];
-				let sets = mesh.descs()[0].clone();
-				let pc = make_pc(&mesh);
-				match mesh_data.indices() {
-					IndexBuffer::U16(buf) => {
-						command_buffer = command_buffer
-							.draw_indexed(
-								pipeline,
-								&dynamic,
-								vertex_buffer,
-								buf.clone().into_buffer_slice().slice(mesh.range()).unwrap(),
-								sets,
-								pc,
-							)
-							.unwrap()
-					},
-					IndexBuffer::U32(buf) => {
-						command_buffer = command_buffer
-							.draw_indexed(
-								pipeline,
-								&dynamic,
-								vertex_buffer,
-								buf.clone().into_buffer_slice().slice(mesh.range()).unwrap(),
-								sets,
-								pc,
-							)
-							.unwrap()
-					},
-				}
+			let mesh_data = if let Some(mesh_data) = mesh.clone_mesh_data() { mesh_data } else { continue };
+
+			let pipeline = match mesh_data.topology() {
+				PrimitiveTopology::TriangleList => self.geom_pipeline_soup.clone(),
+				PrimitiveTopology::TriangleStrip => self.geom_pipeline_strip.clone(),
+				_ => unimplemented!(),
+			};
+			let dynamic = Default::default();
+			let vertex_buffer = vec![mesh_data.vertices().clone()];
+			let sets = mesh.descs()[0].clone();
+			let pc = make_pc(&mesh);
+			match mesh_data.indices() {
+				IndexBuffer::U16(buf) => {
+					command_buffer = command_buffer
+						.draw_indexed(
+							pipeline,
+							&dynamic,
+							vertex_buffer,
+							buf.clone().into_buffer_slice().slice(mesh.range()).unwrap(),
+							sets,
+							pc,
+						)
+						.unwrap()
+				},
+				IndexBuffer::U32(buf) => {
+					command_buffer = command_buffer
+						.draw_indexed(
+							pipeline,
+							&dynamic,
+							vertex_buffer,
+							buf.clone().into_buffer_slice().slice(mesh.range()).unwrap(),
+							sets,
+							pc,
+						)
+						.unwrap()
+				},
 			}
 		}
 

@@ -1,5 +1,6 @@
 use crate::{mesh_data::MeshData, mesh_group::MeshGroup, texture::Texture, transform::Transform, Context};
 use array_init::array_init;
+use atom::Atom;
 use log::trace;
 use std::{
 	ops::Range,
@@ -44,9 +45,9 @@ impl Mesh {
 		let inner = Arc::new(Mutex::new(MeshInner {
 			layout_desc,
 			sampler,
-			mesh_data: None,
+			mesh_data: Atom::empty(),
 			range: 0..0,
-			transform: Transform::default(),
+			transform: Atom::empty(),
 			textures,
 			descs,
 		}));
@@ -69,27 +70,23 @@ impl Drop for Mesh {
 pub struct MeshInner {
 	layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
 	sampler: Arc<Sampler>,
-	mesh_data: Option<Arc<MeshData>>,
+	mesh_data: Atom<Arc<MeshData>>,
 	range: Range<usize>,
-	transform: Transform,
+	transform: Atom<Box<Transform>>,
 	textures: [Arc<dyn Texture + Send + Sync + 'static>; LAYERS],
 	descs: [Arc<dyn DescriptorSet + Send + Sync>; LAYERS],
 }
 impl MeshInner {
-	pub fn transform(&self) -> &Transform {
-		&self.transform
+	pub fn set_transform(&self, transform: Transform) {
+		self.transform.swap(Box::new(transform));
 	}
 
-	pub fn transform_mut(&mut self) -> &mut Transform {
-		&mut self.transform
-	}
-
-	pub fn mesh_data(&self) -> Option<&Arc<MeshData>> {
-		self.mesh_data.as_ref()
-	}
-
-	pub fn set_mesh_data(&mut self, mesh_data: Option<Arc<MeshData>>) {
-		self.mesh_data = mesh_data;
+	pub fn set_mesh_data(&self, mesh_data: Option<Arc<MeshData>>) {
+		if let Some(mesh_data) = mesh_data {
+			self.mesh_data.swap(mesh_data);
+		} else {
+			self.mesh_data.take();
+		}
 	}
 
 	pub fn range(&self) -> Range<usize> {
@@ -103,6 +100,23 @@ impl MeshInner {
 	pub fn set_tex(&mut self, tex_i: usize, tex: Arc<dyn Texture + Send + Sync>) {
 		self.textures[tex_i] = tex;
 		self.descs[tex_i] = make_desc_set(self.layout_desc.clone(), &self.textures, self.sampler.clone());
+	}
+
+	/// May panic if called on multiple threads
+	pub(crate) fn clone_mesh_data(&self) -> Option<Arc<MeshData>> {
+		self.mesh_data.take().map(|tmp| {
+			let ret = tmp.clone();
+			self.mesh_data.set_if_none(tmp);
+			ret
+		})
+	}
+
+	/// May panic if called on multiple threads
+	pub(crate) fn clone_transform(&self) -> Transform {
+		let tmp = self.transform.take().unwrap();
+		let ret = *tmp;
+		self.transform.set_if_none(tmp);
+		ret
 	}
 
 	pub(crate) fn refresh(&mut self) {

@@ -5,6 +5,7 @@ use crate::{
 };
 use cgmath::{vec4, Quaternion};
 use log::trace;
+use nice_engine::transform::Transform;
 
 #[allow(non_snake_case)]
 pub unsafe extern fn MeshInstance_Alloc(group: *mut GGD_MeshGroup) -> *mut GGD_MeshInstance {
@@ -70,11 +71,12 @@ pub unsafe extern fn MeshInstance_SetTransform(this: *mut GGD_MeshInstance, tran
 	let this = &mut *this;
 	let transform = &*transform;
 
-	let mut lock = this.lock().unwrap();
-	lock.transform_mut().pos =
-		vec4(transform.Position.x, transform.Position.y, transform.Position.z, transform.Position.w);
-	lock.transform_mut().rot =
-		Quaternion::new(transform.Rotation.w, transform.Rotation.x, transform.Rotation.y, transform.Rotation.z);
+	let transform = Transform {
+		pos: vec4(transform.Position.x, transform.Position.y, transform.Position.z, transform.Position.w),
+		rot: Quaternion::new(transform.Rotation.w, transform.Rotation.x, transform.Rotation.y, transform.Rotation.z),
+	};
+
+	this.lock().unwrap().set_transform(transform);
 }
 
 #[allow(non_snake_case)]
