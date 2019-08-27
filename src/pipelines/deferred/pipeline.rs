@@ -105,7 +105,7 @@ impl Pipeline for DeferredPipeline {
 			};
 			let dynamic = Default::default();
 			let vertex_buffer = vec![mesh_data.vertices().clone()];
-			let sets = mesh.descs()[0].clone();
+			let sets = mesh.descs().clone();
 			let pc = make_pc(&mesh);
 			match mesh_data.indices() {
 				IndexBuffer::U16(buf) => {

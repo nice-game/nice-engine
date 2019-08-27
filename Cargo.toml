@@ -17,9 +17,9 @@ image = "0.22.1"
 lazy_static = "1.3.0"
 log = "0.4.7"
 maplit = "1.0.1"
-vulkano = { git = "https://github.com/IcyDefiance/vulkano.git" }
+vulkano = { git = "https://github.com/nice-game/vulkano.git", branch = "master-new" }
 vulkano-shaders = "0.13.0"
-vulkano-win = { git = "https://github.com/IcyDefiance/vulkano.git", optional = true }
+vulkano-win = { git = "https://github.com/nice-game/vulkano.git", branch = "master-new", optional = true }
 winit = { version = "0.19.1", optional = true }
 
 [features]

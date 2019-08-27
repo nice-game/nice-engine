@@ -41,7 +41,7 @@ impl Mesh {
 		sampler: Arc<Sampler>,
 	) -> Self {
 		let textures = array_init(|_| white_pixel.clone() as _);
-		let descs = array_init(|_| make_desc_set(layout_desc.clone(), &textures, sampler.clone()));
+		let descs = make_desc_set(layout_desc.clone(), &textures, sampler.clone());
 		let inner = Arc::new(Mutex::new(MeshInner {
 			layout_desc,
 			sampler,
@@ -74,7 +74,7 @@ pub struct MeshInner {
 	range: Range<usize>,
 	transform: Atom<Box<Transform>>,
 	textures: [Arc<dyn Texture + Send + Sync + 'static>; LAYERS],
-	descs: [Arc<dyn DescriptorSet + Send + Sync>; LAYERS],
+	descs: Arc<dyn DescriptorSet + Send + Sync>,
 }
 impl MeshInner {
 	pub fn set_transform(&self, transform: Transform) {
@@ -99,7 +99,7 @@ impl MeshInner {
 
 	pub fn set_tex(&mut self, tex_i: usize, tex: Arc<dyn Texture + Send + Sync>) {
 		self.textures[tex_i] = tex;
-		self.descs[tex_i] = make_desc_set(self.layout_desc.clone(), &self.textures, self.sampler.clone());
+		self.descs = make_desc_set(self.layout_desc.clone(), &self.textures, self.sampler.clone());
 	}
 
 	/// May panic if called on multiple threads
@@ -122,14 +122,14 @@ impl MeshInner {
 	pub(crate) fn refresh(&mut self) {
 		for i in 0..2 {
 			let lhs_id = self.textures[i].image().inner().internal_object();
-			let rhs_id = self.descs[i].image(0).unwrap().0.inner().internal_object();
+			let rhs_id = self.descs.image(0).unwrap().0.inner().internal_object();
 			if lhs_id != rhs_id {
-				self.descs[i] = make_desc_set(self.layout_desc.clone(), &self.textures, self.sampler.clone());
+				self.descs = make_desc_set(self.layout_desc.clone(), &self.textures, self.sampler.clone());
 			}
 		}
 	}
 
-	pub(crate) fn descs(&self) -> &[Arc<dyn DescriptorSet + Send + Sync>; LAYERS] {
+	pub(crate) fn descs(&self) -> &Arc<dyn DescriptorSet + Send + Sync> {
 		&self.descs
 	}
 }
