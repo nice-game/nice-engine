@@ -6,14 +6,12 @@ use std::{
 	ops::Range,
 	sync::{
 		atomic::{AtomicUsize, Ordering},
-		Arc, LockResult, Mutex, MutexGuard,
+		Arc, Mutex,
 	},
 };
 use vulkano::{
 	descriptor::{descriptor_set::PersistentDescriptorSet, DescriptorSet, PipelineLayoutAbstract},
-	image::ImageViewAccess,
 	sampler::Sampler,
-	VulkanObject,
 };
 
 const LAYERS: usize = 7;
@@ -22,7 +20,7 @@ static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 pub struct Mesh {
 	id: usize,
 	mesh_group: Arc<MeshGroup>,
-	inner: Arc<Mutex<MeshInner>>,
+	inner: Arc<MeshInner>,
 }
 impl Mesh {
 	pub fn new(ctx: &Context, mesh_group: Arc<MeshGroup>) -> Self {
@@ -41,24 +39,25 @@ impl Mesh {
 		sampler: Arc<Sampler>,
 	) -> Self {
 		let textures = array_init(|_| white_pixel.clone() as _);
-		let descs = make_desc_set(layout_desc.clone(), &textures, sampler.clone());
-		let inner = Arc::new(Mutex::new(MeshInner {
+		let desc = Atom::new(Box::new(make_desc_set(layout_desc.clone(), &textures, sampler.clone())));
+		let textures = Mutex::new(textures);
+		let inner = Arc::new(MeshInner {
 			layout_desc,
 			sampler,
 			mesh_data: Atom::empty(),
-			range: 0..0,
+			range: Atom::new(Box::new(0..0)),
 			transform: Atom::empty(),
 			textures,
-			descs,
-		}));
+			desc,
+		});
 
 		let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
 		mesh_group.meshes().lock().unwrap().insert(id, inner.clone());
 		Self { id, mesh_group, inner }
 	}
 
-	pub fn lock(&self) -> LockResult<MutexGuard<MeshInner>> {
-		self.inner.lock()
+	pub fn inner(&self) -> &Arc<MeshInner> {
+		&self.inner
 	}
 }
 impl Drop for Mesh {
@@ -71,10 +70,10 @@ pub struct MeshInner {
 	layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
 	sampler: Arc<Sampler>,
 	mesh_data: Atom<Arc<MeshData>>,
-	range: Range<usize>,
+	range: Atom<Box<Range<usize>>>,
 	transform: Atom<Box<Transform>>,
-	textures: [Arc<dyn Texture + Send + Sync + 'static>; LAYERS],
-	descs: Arc<dyn DescriptorSet + Send + Sync>,
+	textures: Mutex<[Arc<dyn Texture + Send + Sync + 'static>; LAYERS]>,
+	desc: Atom<Box<Arc<dyn DescriptorSet + Send + Sync>>>,
 }
 impl MeshInner {
 	pub fn set_transform(&self, transform: Transform) {
@@ -89,17 +88,22 @@ impl MeshInner {
 		}
 	}
 
-	pub fn range(&self) -> Range<usize> {
-		self.range.clone()
+	pub fn set_range(&self, range: Range<usize>) {
+		self.range.swap(Box::new(range));
 	}
 
-	pub fn set_range(&mut self, range: Range<usize>) {
-		self.range = range;
+	pub fn set_tex(&self, tex_i: usize, tex: Arc<dyn Texture + Send + Sync>) {
+		let mut textures = self.textures.lock().unwrap();
+		textures[tex_i] = tex;
+		self.desc.swap(Box::new(make_desc_set(self.layout_desc.clone(), &textures, self.sampler.clone())));
 	}
 
-	pub fn set_tex(&mut self, tex_i: usize, tex: Arc<dyn Texture + Send + Sync>) {
-		self.textures[tex_i] = tex;
-		self.descs = make_desc_set(self.layout_desc.clone(), &self.textures, self.sampler.clone());
+	/// May panic if called on multiple threads
+	pub(crate) fn clone_desc(&self) -> Arc<dyn DescriptorSet + Send + Sync> {
+		let tmp = self.desc.take().unwrap();
+		let ret = (*tmp).clone();
+		self.desc.set_if_none(tmp);
+		ret
 	}
 
 	/// May panic if called on multiple threads
@@ -112,25 +116,19 @@ impl MeshInner {
 	}
 
 	/// May panic if called on multiple threads
+	pub(crate) fn clone_range(&self) -> Range<usize> {
+		let tmp = self.range.take().unwrap();
+		let ret = (*tmp).clone();
+		self.range.set_if_none(tmp);
+		ret
+	}
+
+	/// May panic if called on multiple threads
 	pub(crate) fn clone_transform(&self) -> Transform {
 		let tmp = self.transform.take().unwrap();
 		let ret = *tmp;
 		self.transform.set_if_none(tmp);
 		ret
-	}
-
-	pub(crate) fn refresh(&mut self) {
-		for i in 0..2 {
-			let lhs_id = self.textures[i].image().inner().internal_object();
-			let rhs_id = self.descs.image(0).unwrap().0.inner().internal_object();
-			if lhs_id != rhs_id {
-				self.descs = make_desc_set(self.layout_desc.clone(), &self.textures, self.sampler.clone());
-			}
-		}
-	}
-
-	pub(crate) fn descs(&self) -> &Arc<dyn DescriptorSet + Send + Sync> {
-		&self.descs
 	}
 }
 

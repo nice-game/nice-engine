@@ -86,11 +86,9 @@ impl Resources {
 		});
 
 		let mesh = Mesh::new_inner(mesh_group, self.layout_desc.clone(), &self.white_pixel, self.sampler.clone());
-		{
-			let mesh_inner = mesh.lock().unwrap();
-			mesh_inner.set_mesh_data(Some(model.mesh_data.clone()));
-			// mesh_inner.set_materials(&model.mats);
-		}
+		let mesh_inner = mesh.inner();
+		mesh_inner.set_mesh_data(Some(model.mesh_data.clone()));
+		// mesh_inner.set_materials(&model.mats);
 		mesh
 	}
 

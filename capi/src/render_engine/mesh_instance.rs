@@ -30,7 +30,7 @@ pub unsafe extern fn MeshInstance_SetMeshData(this: *mut GGD_MeshInstance, mesh:
 	let this = &mut *this;
 	let mesh = &mut *mesh;
 
-	this.lock().unwrap().set_mesh_data(Some(mesh.clone()));
+	this.inner().set_mesh_data(Some(mesh.clone()));
 }
 
 #[allow(non_snake_case)]
@@ -39,7 +39,7 @@ pub unsafe extern fn MeshInstance_SetMeshSubset(this: *mut GGD_MeshInstance, off
 
 	let this = &mut *this;
 
-	this.lock().unwrap().set_range(offset as usize..(offset + count) as usize);
+	this.inner().set_range(offset as usize..(offset + count) as usize);
 }
 
 #[allow(non_snake_case)]
@@ -51,7 +51,7 @@ pub unsafe extern fn MeshInstance_SetImageData(this: *mut GGD_MeshInstance, imag
 
 	println!("{}", layer);
 
-	this.lock().unwrap().set_tex(layer as usize, image.tex().unwrap().clone());
+	this.inner().set_tex(layer as usize, image.tex().unwrap().clone());
 }
 
 #[allow(non_snake_case)]
@@ -76,7 +76,7 @@ pub unsafe extern fn MeshInstance_SetTransform(this: *mut GGD_MeshInstance, tran
 		rot: Quaternion::new(transform.Rotation.w, transform.Rotation.x, transform.Rotation.y, transform.Rotation.z),
 	};
 
-	this.lock().unwrap().set_transform(transform);
+	this.inner().set_transform(transform);
 }
 
 #[allow(non_snake_case)]

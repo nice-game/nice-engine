@@ -93,9 +93,6 @@ impl Pipeline for DeferredPipeline {
 				.begin_render_pass(self.framebuffers[image_num].clone(), false, clear_values)
 				.unwrap();
 		for mesh in cam.mesh_group().meshes().lock().unwrap().values() {
-			let mut mesh = mesh.lock().unwrap();
-			mesh.refresh();
-
 			let mesh_data = if let Some(mesh_data) = mesh.clone_mesh_data() { mesh_data } else { continue };
 
 			let pipeline = match mesh_data.topology() {
@@ -105,7 +102,7 @@ impl Pipeline for DeferredPipeline {
 			};
 			let dynamic = Default::default();
 			let vertex_buffer = vec![mesh_data.vertices().clone()];
-			let sets = mesh.descs().clone();
+			let desc = mesh.clone_desc();
 			let pc = make_pc(&mesh);
 			match mesh_data.indices() {
 				IndexBuffer::U16(buf) => {
@@ -114,8 +111,8 @@ impl Pipeline for DeferredPipeline {
 							pipeline,
 							&dynamic,
 							vertex_buffer,
-							buf.clone().into_buffer_slice().slice(mesh.range()).unwrap(),
-							sets,
+							buf.clone().into_buffer_slice().slice(mesh.clone_range()).unwrap(),
+							desc,
 							pc,
 						)
 						.unwrap()
@@ -126,8 +123,8 @@ impl Pipeline for DeferredPipeline {
 							pipeline,
 							&dynamic,
 							vertex_buffer,
-							buf.clone().into_buffer_slice().slice(mesh.range()).unwrap(),
-							sets,
+							buf.clone().into_buffer_slice().slice(mesh.clone_range()).unwrap(),
+							desc,
 							pc,
 						)
 						.unwrap()
