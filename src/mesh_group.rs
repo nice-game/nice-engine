@@ -1,8 +1,7 @@
-use std::sync::RwLock;
 use crate::{mesh::MeshInner, texture::Texture, Context};
 use std::{
 	collections::HashMap,
-	sync::{Arc, Mutex},
+	sync::{Arc, Mutex, RwLock},
 };
 use vulkano::{
 	descriptor::{descriptor_set::PersistentDescriptorSet, DescriptorSet, PipelineLayoutAbstract},

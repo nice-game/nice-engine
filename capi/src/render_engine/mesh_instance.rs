@@ -49,8 +49,6 @@ pub unsafe extern fn MeshInstance_SetImageData(this: *mut GGD_MeshInstance, imag
 	let this = &mut *this;
 	let image = &mut *image;
 
-	println!("{}", layer);
-
 	this.inner().write().unwrap().set_tex(layer as usize, image.tex().unwrap().clone());
 }
 
