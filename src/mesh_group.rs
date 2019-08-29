@@ -1,3 +1,4 @@
+use std::sync::RwLock;
 use crate::{mesh::MeshInner, texture::Texture, Context};
 use std::{
 	collections::HashMap,
@@ -9,7 +10,7 @@ use vulkano::{
 };
 
 pub struct MeshGroup {
-	meshes: Mutex<HashMap<usize, Arc<MeshInner>>>,
+	meshes: Mutex<HashMap<usize, Arc<RwLock<MeshInner>>>>,
 	skybox: Mutex<Arc<dyn DescriptorSet + Send + Sync>>,
 	swap_layout_desc: Arc<dyn PipelineLayoutAbstract + Send + Sync>,
 	white_pixel: Arc<dyn Texture + Send + Sync>,
@@ -30,7 +31,7 @@ impl MeshGroup {
 			make_desc_set(self.swap_layout_desc.clone(), skybox.unwrap_or(&self.white_pixel), self.sampler.clone());
 	}
 
-	pub(crate) fn meshes(&self) -> &Mutex<HashMap<usize, Arc<MeshInner>>> {
+	pub(crate) fn meshes(&self) -> &Mutex<HashMap<usize, Arc<RwLock<MeshInner>>>> {
 		&self.meshes
 	}
 

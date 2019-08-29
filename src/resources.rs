@@ -80,15 +80,17 @@ impl Resources {
 			// 		textures: [self.get_texture(mat.tex1), self.get_texture(mat.tex2)],
 			// 	})
 			// 	.collect();
-			let model = Arc::new(Model { mesh_data /* mats */ });
+			let model = Arc::new(Model { mesh_data /* , mats */ });
 			self.meshes.lock().unwrap().insert(path.to_owned(), model.clone());
 			model
 		});
 
 		let mesh = Mesh::new_inner(mesh_group, self.layout_desc.clone(), &self.white_pixel, self.sampler.clone());
-		let mesh_inner = mesh.inner();
-		mesh_inner.set_mesh_data(Some(model.mesh_data.clone()));
-		// mesh_inner.set_materials(&model.mats);
+		{
+			let mut mesh_inner = mesh.inner().write().unwrap();
+			mesh_inner.set_mesh_data(Some(model.mesh_data.clone()));
+			// mesh_inner.set_materials(&model.mats);
+		}
 		mesh
 	}
 

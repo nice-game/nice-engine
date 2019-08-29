@@ -76,15 +76,12 @@ impl Pipeline for DeferredPipeline {
 			[0.0; 4].into(),
 		];
 
-		let make_pc = |mesh: &MeshInner| {
-			let transform = mesh.clone_transform();
-			geom_vshader::ty::PushConsts {
-				cam_proj: cam.projection().into(),
-				cam_pos: cam.transform().pos.into(),
-				cam_rot: cam.transform().rot.into(),
-				mesh_pos: transform.pos.into(),
-				mesh_rot: transform.rot.into(),
-			}
+		let make_pc = |mesh: &MeshInner| geom_vshader::ty::PushConsts {
+			cam_proj: cam.projection().into(),
+			cam_pos: cam.transform().pos.into(),
+			cam_rot: cam.transform().rot.into(),
+			mesh_pos: mesh.transform().pos.into(),
+			mesh_rot: mesh.transform().rot.into(),
 		};
 
 		let mut command_buffer =
@@ -93,7 +90,9 @@ impl Pipeline for DeferredPipeline {
 				.begin_render_pass(self.framebuffers[image_num].clone(), false, clear_values)
 				.unwrap();
 		for mesh in cam.mesh_group().meshes().lock().unwrap().values() {
-			let mesh_data = if let Some(mesh_data) = mesh.clone_mesh_data() { mesh_data } else { continue };
+			let mesh = mesh.read().unwrap();
+
+			let mesh_data = if let Some(mesh_data) = mesh.mesh_data() { mesh_data } else { continue };
 
 			let pipeline = match mesh_data.topology() {
 				PrimitiveTopology::TriangleList => self.geom_pipeline_soup.clone(),
@@ -102,7 +101,7 @@ impl Pipeline for DeferredPipeline {
 			};
 			let dynamic = Default::default();
 			let vertex_buffer = vec![mesh_data.vertices().clone()];
-			let desc = mesh.clone_desc();
+			let desc = mesh.desc().clone();
 			let pc = make_pc(&mesh);
 			match mesh_data.indices() {
 				IndexBuffer::U16(buf) => {
@@ -111,7 +110,7 @@ impl Pipeline for DeferredPipeline {
 							pipeline,
 							&dynamic,
 							vertex_buffer,
-							buf.clone().into_buffer_slice().slice(mesh.clone_range()).unwrap(),
+							buf.clone().into_buffer_slice().slice(mesh.range()).unwrap(),
 							desc,
 							pc,
 						)
@@ -123,7 +122,7 @@ impl Pipeline for DeferredPipeline {
 							pipeline,
 							&dynamic,
 							vertex_buffer,
-							buf.clone().into_buffer_slice().slice(mesh.clone_range()).unwrap(),
+							buf.clone().into_buffer_slice().slice(mesh.range()).unwrap(),
 							desc,
 							pc,
 						)
