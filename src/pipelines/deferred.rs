@@ -112,7 +112,7 @@ void main() {
 	if (color.w < 0.125) discard;
 	//color.rgb = sqrt(color.rgb); // FIXME: do this for srgb or linear textures, skip it for quadratic textures.
 	out_color = vec4(color.rgb, 0);
-	out_light = (texture(ambient_occlusion, texc.xy) * 0.2 + texture(lightmap_flat, texc.xy)) * out_color;
+	out_light = texture(ambient_occlusion, texc.zw) * out_color;
 	out_normal = vec4(nor, 0);
 	out_position = vec4(pos, 0);
 }

@@ -35,7 +35,9 @@ pub unsafe extern fn ImageData_Alloc(
 			ret
 		},
 		IMG_USAGE_TARGET => {
-			let tex = TargetTexture::new::<Format>(ctx::get().device().clone(), [x, y], format.into()).unwrap();
+			let (tex, tex_future) =
+				TargetTexture::new::<Format>(ctx::get().queue().clone(), [x, y], format.into()).unwrap();
+			tex_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
 			Box::into_raw(Box::new(GGD_ImageData::Initialized(Arc::new(tex))))
 		},
 		_ => unimplemented!(),

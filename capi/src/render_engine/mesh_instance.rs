@@ -5,6 +5,7 @@ use crate::{
 };
 use cgmath::{vec4, Quaternion};
 use log::trace;
+use nice_engine::transform::Transform;
 
 #[allow(non_snake_case)]
 pub unsafe extern fn MeshInstance_Alloc(group: *mut GGD_MeshGroup) -> *mut GGD_MeshInstance {
@@ -29,7 +30,7 @@ pub unsafe extern fn MeshInstance_SetMeshData(this: *mut GGD_MeshInstance, mesh:
 	let this = &mut *this;
 	let mesh = &mut *mesh;
 
-	this.lock().unwrap().set_mesh_data(Some(mesh.clone()));
+	this.inner().set_mesh_data(Some(mesh.clone()));
 }
 
 #[allow(non_snake_case)]
@@ -38,7 +39,7 @@ pub unsafe extern fn MeshInstance_SetMeshSubset(this: *mut GGD_MeshInstance, off
 
 	let this = &mut *this;
 
-	this.lock().unwrap().set_range(offset as usize..(offset + count) as usize);
+	this.inner().set_range(offset as usize..(offset + count) as usize);
 }
 
 #[allow(non_snake_case)]
@@ -50,7 +51,7 @@ pub unsafe extern fn MeshInstance_SetImageData(this: *mut GGD_MeshInstance, imag
 
 	println!("{}", layer);
 
-	this.lock().unwrap().set_tex(layer as usize, image.tex().unwrap().clone());
+	this.inner().set_tex(layer as usize, image.tex().unwrap().clone());
 }
 
 #[allow(non_snake_case)]
@@ -70,11 +71,12 @@ pub unsafe extern fn MeshInstance_SetTransform(this: *mut GGD_MeshInstance, tran
 	let this = &mut *this;
 	let transform = &*transform;
 
-	let mut lock = this.lock().unwrap();
-	lock.transform_mut().pos =
-		vec4(transform.Position.x, transform.Position.y, transform.Position.z, transform.Position.w);
-	lock.transform_mut().rot =
-		Quaternion::new(transform.Rotation.w, transform.Rotation.x, transform.Rotation.y, transform.Rotation.z);
+	let transform = Transform {
+		pos: vec4(transform.Position.x, transform.Position.y, transform.Position.z, transform.Position.w),
+		rot: Quaternion::new(transform.Rotation.w, transform.Rotation.x, transform.Rotation.y, transform.Rotation.z),
+	};
+
+	this.inner().set_transform(transform);
 }
 
 #[allow(non_snake_case)]
