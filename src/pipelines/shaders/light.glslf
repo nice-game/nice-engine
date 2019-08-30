@@ -1,4 +1,6 @@
 #version 450
+#include "util.glsl"
+
 layout(location = 0) out vec4 pixel;
 
 layout(input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput g_depth;
@@ -15,14 +17,6 @@ layout(push_constant) uniform PushConsts {
 	vec4 LightPosition;
 	vec4 LightColor;
 } pc;
-
-vec3 quat_mul(vec4 quat, vec3 vec) {
-	return cross(quat.xyz, cross(quat.xyz, vec) + vec * quat.w) * 2.0 + vec;
-}
-
-vec4 quat_inv(vec4 quat) {
-	return vec4(-quat.xyz, quat.w) / dot(quat, quat);
-}
 
 vec3 inv_perspective(vec4 Projection, vec3 Position) {
 	//vec4 InverseProjection = vec4(projection.w / projection.x, projection.w / projection.y, -projection.w, projection.z);

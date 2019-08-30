@@ -1,4 +1,6 @@
 #version 450
+#include "util.glsl"
+
 layout(location = 0) in vec2 dir;
 layout(location = 0) out vec4 pixel;
 
@@ -16,14 +18,6 @@ layout(push_constant) uniform PushConsts {
 } pc;
 
 const float M_PI = 3.141592653589793;
-
-vec3 eye_ray(vec4 inv_proj, vec2 texc) {
-	return -normalize(inv_proj.xyz * vec3(2.0 * texc - 1.0, 1.0));
-}
-
-vec3 quat_mul(vec4 quat, vec3 vec) {
-	return cross(quat.xyz, cross(quat.xyz, vec) + vec * quat.w) * 2.0 + vec;
-}
 
 vec3 skybox(vec4 cam_rot) {
 	vec3 skydir = -normalize(pc.inv_proj.xyz * vec3(dir, 1.0));

@@ -1,4 +1,6 @@
 #version 450
+#include "util.glsl"
+
 layout(location = 0) in vec3 pos;
 layout(location = 1) in vec3 nor;
 layout(location = 2) in vec2 texc;
@@ -15,18 +17,6 @@ layout(push_constant) uniform PushConsts {
 	vec4 mesh_pos;
 	vec4 mesh_rot;
 } pc;
-
-vec4 perspective(vec4 proj, vec3 pos) {
-	return vec4(pos.xy * proj.xy, pos.z * proj.z + proj.w, -pos.z);
-}
-
-vec4 quat_inv(vec4 quat) {
-	return vec4(-quat.xyz, quat.w) / dot(quat, quat);
-}
-
-vec3 quat_mul(vec4 quat, vec3 vec) {
-	return cross(quat.xyz, cross(quat.xyz, vec) + vec * quat.w) * 2.0 + vec;
-}
 
 void main() {
 	// stupid math library puts w first, so we flip it here
