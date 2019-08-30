@@ -112,7 +112,7 @@ void main() {
 	if (color.w < 0.125) discard;
 	//color.rgb = sqrt(color.rgb); // FIXME: do this for srgb or linear textures, skip it for quadratic textures.
 	out_color = vec4(color.rgb, 0);
-	out_light = texture(ambient_occlusion, texc.zw) * out_color;
+	out_light = texture(ambient_occlusion, texc.zw) * 0.2 * out_color;
 	out_normal = vec4(nor, 0);
 	out_position = vec4(pos, 0);
 }
@@ -152,19 +152,34 @@ layout(input_attachment_index = 4, set = 0, binding = 4) uniform subpassInput g_
 layout(set = 1, binding = 0) uniform sampler2D sky;
 
 layout(push_constant) uniform PushConsts {
-	float Exposure;
+	vec4 inv_proj;
+	vec4 cam_rot;
 } pc;
 
-vec3 skybox() {
-	vec3 skydir = vec3(dir.xy, 1.0);
-	return texture(sky, skydir.xy).xyz;
+const float M_PI = 3.141592653589793;
+
+vec3 eye_ray(vec4 inv_proj, vec2 texc) {
+	return -normalize(inv_proj.xyz * vec3(2.0 * texc - 1.0, 1.0));
+}
+
+vec3 quat_mul(vec4 quat, vec3 vec) {
+	return cross(quat.xyz, cross(quat.xyz, vec) + vec * quat.w) * 2.0 + vec;
+}
+
+vec3 skybox(vec4 cam_rot) {
+	vec3 skydir = -normalize(pc.inv_proj.xyz * vec3(dir, 1.0));
+	skydir = quat_mul(cam_rot, vec3(skydir.x, -skydir.z, -skydir.y));
+	vec2 uv = vec2(atan(skydir.x, -skydir.y) / 2.0, acos(skydir.z)) / M_PI;
+	return textureLod(sky, uv, 0).rgb;
 }
 
 void main() {
+	// stupid math library puts w first, so we flip it here
+	vec4 cam_rot = pc.cam_rot.yzwx;
+
 	float depth = subpassLoad(g_depth).x;
 	vec3 color = subpassLoad(g_light).rgb;
-	if (depth == 1.0) color = skybox();
-	color *= pc.Exposure;
+	if (depth == 1.0) color = skybox(cam_rot);
 	color /= 1.0 + length(color);
 	// color = (color * (2.51 * color + 0.03)) / (color * (2.43 * color + 0.59) + 0.14); // ACES
 	pixel = vec4(color, 0); // Don't gamma correct! Output framebuffer has hardware sRGB encoding.

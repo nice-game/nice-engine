@@ -1,5 +1,4 @@
-use crate::Context;
-use crate::{mesh_group::MeshGroup, transform::Transform};
+use crate::{mesh_group::MeshGroup, transform::Transform, Context};
 use cgmath::{prelude::*, vec4, Vector4};
 use std::{f32::consts::PI, sync::Arc};
 
@@ -7,11 +6,10 @@ pub struct Camera {
 	proj: Vector4<f32>,
 	transform: Transform,
 	mesh_group: Arc<MeshGroup>,
-	pub exposure: f32,
 }
 impl Camera {
 	pub fn new(ctx: &Context) -> Self {
-		Self { proj: Vector4::zero(), transform: Transform::default(), exposure: 1.0, mesh_group: MeshGroup::new(ctx) }
+		Self { proj: Vector4::zero(), transform: Transform::default(), mesh_group: MeshGroup::new(ctx) }
 	}
 
 	pub fn set_perspective(&mut self, aspect: f32, fovx: f32, znear: f32, zfar: f32) {
@@ -36,6 +34,11 @@ impl Camera {
 
 	pub(crate) fn projection(&self) -> Vector4<f32> {
 		self.proj
+	}
+
+	pub(crate) fn inv_proj(&self) -> Vector4<f32> {
+		let proj = self.proj;
+		vec4(proj.w / proj.x, proj.w / proj.y, -proj.w, proj.z)
 	}
 }
 

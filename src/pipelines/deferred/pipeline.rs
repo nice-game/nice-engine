@@ -169,7 +169,7 @@ impl Pipeline for DeferredPipeline {
 				vec![self.ctx.vertices.clone()],
 				self.ctx.indices.clone(),
 				(self.gbuffers_desc.clone(), cam.mesh_group().skybox().lock().unwrap().clone()),
-				swap_fshader::ty::PushConsts { Exposure: cam.exposure },
+				swap_fshader::ty::PushConsts { inv_proj: cam.inv_proj().into(), cam_rot: cam.transform().rot.into() },
 			)
 			.unwrap();
 
