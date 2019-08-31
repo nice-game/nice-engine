@@ -50,5 +50,5 @@ pub(crate) fn from_nice_texture(
 	let (tex, tex_future) =
 		ImmutableTexture::from_buffer(queue.clone(), pixbuf, [width as u32, height as u32], fmt).unwrap();
 
-	(Arc::new(tex), Box::new(tex_future))
+	(Arc::new(tex), tex_future)
 }
