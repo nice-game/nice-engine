@@ -173,14 +173,11 @@ pub enum GGD_BufferStatus {
 	GGD_BUFFER_CLOSED,
 }
 
-/// Must be !Sync because `size` may be modified by `read` and `status`, even though they accept const pointers.
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(C)]
 pub struct GGD_BufferInfo {
-	/// May be 0 if status is `GGD_BUFFER_CLOSED`
-	///
-	/// `size` will be modified by `resize`, and if `size` is 0, it may be modified by `read`, `write`, or `status`
+	/// If `status == BUFFER_CLOSED`, then `size` is undefined
 	pub size: u64,
 
 	/// Will block if status is `GGD_BUFFER_CLOSED`
@@ -190,7 +187,7 @@ pub struct GGD_BufferInfo {
 	/// same GGD_BufferInfo
 	pub read: unsafe extern fn(*const GGD_BufferInfo, offset: u64, bytes: u64) -> *const c_void,
 
-	/// Will block if status is not `GGD_BUFFER_WRITE`
+	/// Will block if status is not `GGD_BUFFER_WRITE`. Will implicitly resize if `offset + bytes > size`
 	///
 	/// # Returns
 	/// A write-only buffer that will be valid until the next call to `read`, `write`, `resize`, or `status` with the
