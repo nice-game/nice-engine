@@ -11,7 +11,6 @@ mod threads;
 pub mod transform;
 #[cfg(feature = "window")]
 pub mod window;
-pub mod world;
 
 use crate::{
 	pipelines::{deferred::DeferredPipelineDef, PipelineContext, PipelineDef},
@@ -30,7 +29,6 @@ pub use vulkano::{
 	instance::{InstanceCreationError, Version},
 	sync::GpuFuture,
 };
-use world::World;
 
 /// Root struct for this library. Any windows that are created using the same context will share some resources.
 pub struct Context {
@@ -42,7 +40,6 @@ pub struct Context {
 	device: Arc<Device>,
 	queue: Arc<Queue>,
 	pipeline_ctx: Box<dyn PipelineContext>,
-	world: Arc<World>,
 	resources: Resources,
 }
 impl Context {
@@ -126,8 +123,6 @@ impl Context {
 
 		let (pipeline_ctx, pipeline_ctx_future) = DeferredPipelineDef::make_context(&device, &queue);
 
-		let world = World::new();
-
 		let (resources, resources_future) = Resources::new(queue.clone(), pipeline_ctx.layout_desc().clone());
 
 		Ok((
@@ -138,7 +133,6 @@ impl Context {
 				device,
 				queue,
 				pipeline_ctx,
-				world,
 				resources,
 			}),
 			pipeline_ctx_future.join(resources_future),
@@ -147,10 +141,6 @@ impl Context {
 
 	pub fn resources(&self) -> &Resources {
 		&self.resources
-	}
-
-	pub fn world(&self) -> &Arc<World> {
-		&self.world
 	}
 
 	pub fn device(&self) -> &Arc<Device> {

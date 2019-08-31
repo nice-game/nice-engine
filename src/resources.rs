@@ -12,6 +12,7 @@ use atom::AtomSetOnce;
 use futures::{future::lazy, task::SpawnExt};
 use std::{
 	collections::HashMap,
+	ops::Range,
 	path::{Path, PathBuf},
 	sync::{Arc, Mutex},
 };
@@ -68,34 +69,40 @@ impl Resources {
 		(Self { queue, layout_desc, sampler, white_pixel, meshes, textures }, white_pixel_future)
 	}
 
-	pub fn get_model(&mut self, mesh_group: Arc<MeshGroup>, path: impl AsRef<Path> + Clone + Send + 'static) -> Mesh {
+	pub fn get_model(&self, mesh_group: Arc<MeshGroup>, path: impl AsRef<Path> + Clone + Send + 'static) -> Vec<Mesh> {
 		let path = path.as_ref();
-		let model = self.meshes.lock().unwrap().get(path).cloned().unwrap_or_else(|| {
-			let (mesh_data, _mats, mesh_data_future) = model::from_nice_model(&self.queue, path.clone());
+		let model = self.meshes.lock().unwrap().get(path).cloned();
+		let model = model.unwrap_or_else(|| {
+			let (mesh_data, mats, mesh_data_future) = model::from_nice_model(&self.queue, path.clone());
 			mesh_data_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
-			// let mats = mats
-			// 	.into_iter()
-			// 	.map(|mat| Material {
-			// 		range: mat.range,
-			// 		textures: [self.get_texture(mat.tex1), self.get_texture(mat.tex2)],
-			// 	})
-			// 	.collect();
-			let model = Arc::new(Model { mesh_data /* , mats */ });
+			let mats = mats
+				.into_iter()
+				.map(|mat| Material {
+					range: mat.range,
+					textures: [self.get_texture(mat.tex1), self.get_texture(mat.tex2)],
+				})
+				.collect();
+			let model = Arc::new(Model { mesh_data, mats });
 			self.meshes.lock().unwrap().insert(path.to_owned(), model.clone());
 			model
 		});
 
-		let mesh = Mesh::new_inner(mesh_group, self.layout_desc.clone(), &self.white_pixel, self.sampler.clone());
-		{
-			let mut mesh_inner = mesh.inner().write().unwrap();
-			mesh_inner.set_mesh_data(Some(model.mesh_data.clone()));
-			// mesh_inner.set_materials(&model.mats);
-		}
-		mesh
+		model.mats.iter().map(|mat| {
+			let mesh = Mesh::new_inner(mesh_group.clone(), self.layout_desc.clone(), &self.white_pixel, self.sampler.clone());
+			{
+				let mut mesh_inner = mesh.inner().write().unwrap();
+				mesh_inner.set_mesh_data(Some(model.mesh_data.clone()));
+				mesh_inner.set_range(mat.range.clone());
+				mesh_inner.set_tex(0, mat.textures[0].clone());
+				mesh_inner.set_tex(1, mat.textures[1].clone());
+			}
+			mesh
+		}).collect()
 	}
 
-	pub fn get_texture(&mut self, path: impl AsRef<Path> + Clone + Send + 'static) -> Arc<dyn Texture> {
-		self.textures.lock().unwrap().get(path.as_ref()).cloned().unwrap_or_else(|| {
+	pub fn get_texture(&self, path: impl AsRef<Path> + Clone + Send + 'static) -> Arc<dyn Texture + Send + Sync> {
+		let tex = self.textures.lock().unwrap().get(path.as_ref()).cloned();
+		tex.unwrap_or_else(|| {
 			let tex = Arc::new(TextureResource { tex: AtomSetOnce::empty(), white_pixel: self.white_pixel.clone() });
 			load_tex(self.queue.clone(), tex.clone(), path.clone());
 			self.textures.lock().unwrap().insert(path.as_ref().to_owned(), tex.clone());
@@ -127,7 +134,12 @@ fn load_tex(queue: Arc<Queue>, res: Arc<TextureResource>, path: impl AsRef<Path>
 
 struct Model {
 	mesh_data: Arc<MeshData>,
-	// mats: Vec<Material>,
+	mats: Vec<Material>,
+}
+
+struct Material {
+	range: Range<usize>,
+	textures: [Arc<dyn Texture + Send + Sync>; 2],
 }
 
 struct TextureResource {

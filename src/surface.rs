@@ -1,4 +1,4 @@
-use crate::{camera::Camera, pipelines::Pipeline, world::World, Context};
+use crate::{camera::Camera, pipelines::Pipeline, Context};
 use std::{
 	os::raw::c_ulong,
 	sync::{Arc, Mutex},
@@ -22,7 +22,6 @@ pub struct Surface<W: Send + Sync + 'static = ()> {
 	swapchain: Arc<Swapchain<W>>,
 	pipeline: Box<dyn Pipeline>,
 	prev_frame_end: Option<Arc<FenceSignalFuture<Box<dyn GpuFuture>>>>,
-	world: Arc<World>,
 	camera: Arc<Mutex<Camera>>,
 }
 impl<W: Send + Sync + 'static> Surface<W> {
@@ -58,9 +57,8 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		};
 
 		let camera = self.camera.lock().unwrap();
-		let lights = self.world.lights().lock().unwrap();
 		let before_execute = before_execute
-			.then_execute(self.queue.clone(), self.pipeline.draw(image_num, self.queue.family(), &camera, &lights))
+			.then_execute(self.queue.clone(), self.pipeline.draw(image_num, self.queue.family(), &camera, &[]))
 			.unwrap()
 			.then_swapchain_present(self.queue.clone(), self.swapchain.clone(), image_num);
 
@@ -136,10 +134,9 @@ impl<W: Send + Sync + 'static> Surface<W> {
 		let pipeline = ctx.pipeline_ctx().make_pipeline(images.into_iter().map(|i| i as _).collect(), dimensions);
 		let prev_frame_end = None;
 
-		let world = ctx.world().clone();
 		let camera = Arc::new(Mutex::new(Camera::new(ctx)));
 
-		Self { device, queue, surface, swapchain, pipeline, prev_frame_end, world, camera }
+		Self { device, queue, surface, swapchain, pipeline, prev_frame_end, camera }
 	}
 }
 impl Surface<()> {
