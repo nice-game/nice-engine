@@ -25,14 +25,13 @@ pub const RENDER_ENGINE: GGD_RenderEngine = GGD_RenderEngine {
 	Window_Draw,
 
 	MeshData_Alloc_Polygon,
-	MeshData_Alloc_Polygon_Variant: None,
 	MeshData_Alloc_Field: None,
 	MeshData_Free,
 
 	ImageData_Alloc,
 	ImageData_Free,
-	ImageData_SetPixelData,
-	ImageData_GetPixelData,
+	ImageData_ReadPixelData,
+	ImageData_DrawPixelData,
 	ImageData_DrawCamera,
 	ImageData_DrawImage,
 	ImageData_DrawText,

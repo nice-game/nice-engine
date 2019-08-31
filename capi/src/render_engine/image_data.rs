@@ -1,13 +1,5 @@
-use crate::{
-	ctx,
-	game_graph::{
-		GGImageUsage::{self, *},
-		GGPixelFormat, GGTextOrigin,
-	},
-	game_graph_driver::{GGD_Camera, GGD_FontData, GGD_ImageData},
-};
+use crate::{ctx, game_graph::*, game_graph_driver::*};
 use half::f16;
-use libc::c_void;
 use log::trace;
 use nice_engine::texture::{ImmutableTexture, TargetTexture};
 use std::{ptr::null, slice, sync::Arc};
@@ -22,25 +14,22 @@ pub unsafe extern fn ImageData_Alloc(
 	x: u32,
 	y: u32,
 	format: GGPixelFormat,
-	buffer: *const c_void,
+	pixelBuffer: *const GGD_BufferInfo,
+	_cacheBuffer: *mut GGD_BufferInfo,
 ) -> *mut GGD_ImageData {
 	trace!("ImageData_Alloc");
 
-	match usage {
-		IMG_USAGE_STATIC | IMG_USAGE_GLYPH => {
-			let ret = Box::into_raw(Box::new(GGD_ImageData::Uninitialized { usage, x, y, format }));
-			if buffer != null() {
-				ImageData_SetPixelData(ret, buffer, 0);
-			}
-			ret
-		},
-		IMG_USAGE_TARGET => {
-			let (tex, tex_future) =
-				TargetTexture::new::<Format>(ctx::get().queue().clone(), [x, y], format.into()).unwrap();
-			tex_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
-			Box::into_raw(Box::new(GGD_ImageData::Initialized(Arc::new(tex))))
-		},
-		_ => unimplemented!(),
+	if usage.contains(GGImageUsage::IMG_USAGE_TARGET) {
+		let (tex, tex_future) =
+			TargetTexture::new::<Format>(ctx::get().queue().clone(), [x, y], format.into()).unwrap();
+		tex_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
+		Box::into_raw(Box::new(GGD_ImageData::Initialized(Arc::new(tex))))
+	} else {
+		let ret = Box::into_raw(Box::new(GGD_ImageData::Uninitialized { usage, x, y, format }));
+		if pixelBuffer != null() {
+			ImageData_DrawPixelData(ret, pixelBuffer);
+		}
+		ret
 	}
 }
 
@@ -52,18 +41,18 @@ pub unsafe extern fn ImageData_Free(this: *mut GGD_ImageData) {
 }
 
 #[allow(non_snake_case)]
-pub unsafe extern fn ImageData_SetPixelData(this: *mut GGD_ImageData, buffer: *const c_void, mipmap: i32) -> i32 {
+pub unsafe extern fn ImageData_DrawPixelData(this: *mut GGD_ImageData, buffer: *const GGD_BufferInfo) {
 	trace!("ImageData_SetPixelData");
 
 	let this = &mut *this;
-
-	if mipmap != 0 {
-		return 1;
-	}
+	let buffer = &*buffer;
+	let pixels = (buffer.read)(buffer, 0, buffer.size);
 
 	match *this {
-		GGD_ImageData::Uninitialized { usage, x, y, format } => match usage {
-			IMG_USAGE_STATIC | IMG_USAGE_GLYPH => {
+		GGD_ImageData::Uninitialized { usage, x, y, format } => {
+			if usage.contains(GGImageUsage::IMG_USAGE_TARGET) {
+				unimplemented!();
+			} else {
 				let queue = ctx::get().queue().clone();
 				let dims = [x, y];
 				let len = x as usize * y as usize;
@@ -72,17 +61,17 @@ pub unsafe extern fn ImageData_SetPixelData(this: *mut GGD_ImageData, buffer: *c
 
 				let (tex, tex_future): (_, Box<dyn GpuFuture>) = match format {
 					R8G8B8A8Unorm | R8G8B8A8Srgb => {
-						let buffer = slice::from_raw_parts(buffer as *const [u8; 4], len).iter().cloned();
+						let buffer = slice::from_raw_parts(pixels as *const [u8; 4], len).iter().cloned();
 						let (tex, fut) = ImmutableTexture::from_iter_vk(queue, buffer, dims, format).unwrap();
 						(tex, Box::new(fut))
 					},
 					R32G32B32A32Sfloat => {
-						let buffer = slice::from_raw_parts(buffer as *const [f32; 4], len).iter().cloned();
+						let buffer = slice::from_raw_parts(pixels as *const [f32; 4], len).iter().cloned();
 						let (tex, fut) = ImmutableTexture::from_iter_vk(queue, buffer, dims, format).unwrap();
 						(tex, Box::new(fut))
 					},
 					R16G16B16A16Sfloat => {
-						let buffer = slice::from_raw_parts(buffer as *const [f16; 4], len).iter().cloned();
+						let buffer = slice::from_raw_parts(pixels as *const [f16; 4], len).iter().cloned();
 						let (tex, fut) = ImmutableTexture::from_iter_vk(queue, buffer, dims, format).unwrap();
 						(tex, Box::new(fut))
 					},
@@ -92,31 +81,32 @@ pub unsafe extern fn ImageData_SetPixelData(this: *mut GGD_ImageData, buffer: *c
 				*this = GGD_ImageData::Initialized(Arc::new(tex));
 
 				tex_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
-			},
-			_ => unimplemented!(),
+			}
 		},
 		GGD_ImageData::Initialized(_) => panic!("cannot write to initialized image"),
 	}
 
-	1
+	if let Some(status) = buffer.status {
+		status(buffer, GGD_BufferStatus::GGD_BUFFER_CLOSED as _);
+	}
 }
 
 // buffer can be null. x, y, and format are in/out params.
 #[allow(non_snake_case)]
-pub extern fn ImageData_GetPixelData(_this: *mut GGD_ImageData, _buffer: *mut c_void, _mipmap: i32) -> i32 {
+pub unsafe extern fn ImageData_ReadPixelData(_this: *mut GGD_ImageData, _buffer: *mut GGD_BufferInfo) {
 	trace!("ImageData_GetPixelData");
 
 	unimplemented!();
 }
 
 #[allow(non_snake_case)]
-pub extern fn ImageData_DrawCamera(_dst: *mut GGD_ImageData, _src: *mut GGD_Camera) {
+pub extern fn ImageData_DrawCamera(_this: *mut GGD_ImageData, _src: *mut GGD_Camera) {
 	trace!("ImageData_DrawCamera");
 }
 
 #[allow(non_snake_case)]
 pub extern fn ImageData_DrawImage(
-	_dst: *mut GGD_ImageData,
+	_this: *mut GGD_ImageData,
 	_src: *mut GGD_ImageData,
 	_x: f32,
 	_y: f32,
@@ -128,7 +118,7 @@ pub extern fn ImageData_DrawImage(
 
 #[allow(non_snake_case)]
 pub extern fn ImageData_DrawText(
-	_dst: *mut GGD_ImageData,
+	_this: *mut GGD_ImageData,
 	_src: *mut GGD_FontData,
 	_x: f32,
 	_y: f32,

@@ -1,14 +1,13 @@
-use crate::{
-	ctx,
-	game_graph::GGTransform,
-	game_graph_driver::{GGD_ImageData, GGD_MeshData, GGD_MeshGroup, GGD_MeshInstance},
-};
+use crate::{ctx, game_graph::*, game_graph_driver::*};
 use cgmath::{vec4, Quaternion};
 use log::trace;
 use nice_engine::transform::Transform;
 
 #[allow(non_snake_case)]
-pub unsafe extern fn MeshInstance_Alloc(group: *mut GGD_MeshGroup) -> *mut GGD_MeshInstance {
+pub unsafe extern fn MeshInstance_Alloc(
+	group: *mut GGD_MeshGroup,
+	_cacheBuffer: *mut GGD_BufferInfo,
+) -> *mut GGD_MeshInstance {
 	trace!("MeshInstance_Alloc");
 
 	let group = &mut *group;

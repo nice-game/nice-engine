@@ -1,18 +1,14 @@
 use crate::{
 	ctx,
-	game_graph::{
-		GGIndexFormat::{self, *},
-		GGVertexFormat::{self, *},
-	},
-	game_graph_driver::GGD_MeshData,
+	game_graph::{GGIndexFormat::*, GGVertexFormat::*, *},
+	game_graph_driver::*,
 };
-use libc::c_void;
 use log::trace;
 use nice_engine::{
 	mesh_data::{MeshData, Pntl_32F},
 	GpuFuture,
 };
-use std::{slice, sync::Arc};
+use std::{mem::size_of, slice, sync::Arc};
 use vulkano::{
 	buffer::{BufferAccess, BufferUsage, ImmutableBuffer},
 	pipeline::input_assembly::PrimitiveTopology,
@@ -20,20 +16,23 @@ use vulkano::{
 
 #[allow(non_snake_case)]
 pub unsafe extern fn MeshData_Alloc_Polygon(
-	vertexBuffer: *const c_void,
-	vertexCount: u32,
 	vertexFormat: GGVertexFormat,
-	indexBuffer: *const c_void,
-	indexCount: u32,
+	vertexBuffer: *const GGD_BufferInfo,
 	indexFormat: GGIndexFormat,
+	indexBuffer: *const GGD_BufferInfo,
+	_cacheBuffer: *mut GGD_BufferInfo,
 ) -> *mut GGD_MeshData {
 	trace!("MeshData_Alloc_Polygon");
 
+	let vertexBuffer = &*vertexBuffer;
+	let indexBuffer = &*indexBuffer;
 	let queue = ctx::get().queue();
 
 	let (vertices, vertices_future): (Arc<dyn BufferAccess + Send + Sync>, _) = match vertexFormat {
 		VFMT_PNTL_32F => {
-			let buffer = slice::from_raw_parts(vertexBuffer as *const Pntl_32F, vertexCount as usize).iter().cloned();
+			let vertices = (vertexBuffer.read)(vertexBuffer, 0, vertexBuffer.size) as *const Pntl_32F;
+			let len = vertexBuffer.size as usize / size_of::<Pntl_32F>();
+			let buffer = slice::from_raw_parts(vertices, len).iter().cloned();
 			let (vertices, vertices_future) =
 				ImmutableBuffer::from_iter(buffer, BufferUsage::vertex_buffer(), queue.clone()).unwrap();
 			(vertices, vertices_future)
@@ -43,6 +42,10 @@ pub unsafe extern fn MeshData_Alloc_Polygon(
 		VFMT_UNDEFINED => unimplemented!(),
 	};
 
+	if let Some(status) = vertexBuffer.status {
+		status(vertexBuffer, GGD_BufferStatus::GGD_BUFFER_CLOSED as _);
+	}
+
 	let topology = match indexFormat {
 		IFMT_SOUP_16U | IFMT_SOUP_32U => PrimitiveTopology::TriangleList,
 		IFMT_STRIP_16U | IFMT_STRIP_32U => PrimitiveTopology::TriangleStrip,
@@ -51,13 +54,17 @@ pub unsafe extern fn MeshData_Alloc_Polygon(
 
 	let (mesh_data, indices_future) = match indexFormat {
 		IFMT_SOUP_16U | IFMT_STRIP_16U => {
-			let buffer = slice::from_raw_parts(indexBuffer as *const u16, indexCount as usize).iter().cloned();
+			let indices = (indexBuffer.read)(indexBuffer, 0, indexBuffer.size) as *const u16;
+			let len = indexBuffer.size as usize / size_of::<u16>();
+			let buffer = slice::from_raw_parts(indices, len).iter().cloned();
 			let (indices, indices_future) =
 				ImmutableBuffer::from_iter(buffer, BufferUsage::index_buffer(), queue.clone()).unwrap();
 			(MeshData::from_bufs_u16(vertices, indices, topology), indices_future)
 		},
 		IFMT_SOUP_32U | IFMT_STRIP_32U => {
-			let buffer = slice::from_raw_parts(indexBuffer as *const u32, indexCount as usize).iter().cloned();
+			let indices = (indexBuffer.read)(indexBuffer, 0, indexBuffer.size) as *const u32;
+			let len = indexBuffer.size as usize / size_of::<u32>();
+			let buffer = slice::from_raw_parts(indices, len).iter().cloned();
 			let (indices, indices_future) =
 				ImmutableBuffer::from_iter(buffer, BufferUsage::index_buffer(), queue.clone()).unwrap();
 			(MeshData::from_bufs_u32(vertices, indices, topology), indices_future)

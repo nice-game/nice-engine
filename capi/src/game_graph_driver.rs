@@ -73,41 +73,19 @@ pub struct GGD_RenderEngine {
 	pub Window_SetOverlay: extern fn(dst: *mut GGD_Window, overlay: *mut GGD_ImageData),
 	pub Window_Draw: unsafe extern fn(*mut GGD_Window),
 
-	pub MeshData_Alloc_Polygon: unsafe extern fn(
-		vertexBuffer: *const c_void,
-		vertexCount: u32,
-		vertexFormat: GGVertexFormat,
-		indexBuffer: *const c_void,
-		indexCount: u32,
-		indexFormat: GGIndexFormat,
-	) -> *mut GGD_MeshData,
-	pub MeshData_Alloc_Polygon_Variant: Option<
-		unsafe extern fn(
-			vertexBuffer: *const c_void,
-			vertexCount: u32,
-			vertexFormat: GGVertexFormat,
-			indexBuffer: *mut GGD_MeshData,
-		) -> *mut GGD_MeshData,
-	>,
-	pub MeshData_Alloc_Field:
-		Option<extern fn(buffer: *const c_void, x: u32, y: u32, z: u32, format: GGDistanceFormat) -> *mut GGD_MeshData>,
+	pub MeshData_Alloc_Polygon: unsafe extern fn(vertexFormat: GGVertexFormat, vertexBuffer: *const GGD_BufferInfo, indexFormat: GGIndexFormat, indexBuffer: *const GGD_BufferInfo, cacheBuffer: *mut GGD_BufferInfo) -> *mut GGD_MeshData,
+	pub MeshData_Alloc_Field: Option<unsafe extern fn(fieldFormat: GGDistanceFormat, x: u32, y: u32, z: u32, fieldBuffer: *const GGD_BufferInfo, cacheBuffer: *mut GGD_BufferInfo) -> *mut GGD_MeshData>,
 	pub MeshData_Free: unsafe extern fn(*mut GGD_MeshData),
 
-	pub ImageData_Alloc: unsafe extern fn(
-		usage: GGImageUsage,
-		x: u32,
-		y: u32,
-		format: GGPixelFormat,
-		buffer: *const c_void,
-	) -> *mut GGD_ImageData,
+	pub ImageData_Alloc: unsafe extern fn(usage: GGImageUsage, x: u32, y: u32, format: GGPixelFormat, pixelBuffer: *const GGD_BufferInfo, cacheBuffer: *mut GGD_BufferInfo) -> *mut GGD_ImageData,
 	pub ImageData_Free: unsafe extern fn(*mut GGD_ImageData),
-	pub ImageData_SetPixelData: unsafe extern fn(this: *mut GGD_ImageData, buffer: *const c_void, mipmap: i32) -> i32,
-	pub ImageData_GetPixelData: extern fn(this: *mut GGD_ImageData, buffer: *mut c_void, mipmap: i32) -> i32,
-	pub ImageData_DrawCamera: extern fn(this: *mut GGD_ImageData, src: *mut GGD_Camera),
+	pub ImageData_ReadPixelData: unsafe extern fn (image: *mut GGD_ImageData, buffer: *mut GGD_BufferInfo),
+	pub ImageData_DrawPixelData: unsafe extern fn (dst: *mut GGD_ImageData, buffer: *const GGD_BufferInfo),
+	pub ImageData_DrawCamera: extern fn(*mut GGD_ImageData, src: *mut GGD_Camera),
 	pub ImageData_DrawImage:
-		extern fn(this: *mut GGD_ImageData, src: *mut GGD_ImageData, x: f32, y: f32, w: f32, h: f32),
+		extern fn(*mut GGD_ImageData, src: *mut GGD_ImageData, x: f32, y: f32, w: f32, h: f32),
 	pub ImageData_DrawText: extern fn(
-		this: *mut GGD_ImageData,
+		*mut GGD_ImageData,
 		src: *mut GGD_FontData,
 		x: f32,
 		y: f32,
@@ -120,14 +98,14 @@ pub struct GGD_RenderEngine {
 	pub FontData_SetGlyph:
 		extern fn(image: *mut GGD_FontData, codepoint: u32, img: *mut GGD_ImageData, basex: f32, basey: f32),
 
-	pub MeshGroup_Alloc: unsafe extern fn() -> *mut GGD_MeshGroup,
+	pub MeshGroup_Alloc: unsafe extern fn(cacheBuffer: *mut GGD_BufferInfo) -> *mut GGD_MeshGroup,
 	pub MeshGroup_Free: unsafe extern fn(*mut GGD_MeshGroup),
 	pub MeshGroup_SetSky: unsafe extern fn(*mut GGD_MeshGroup, *mut GGD_ImageData),
 
-	pub MeshInstance_Alloc: unsafe extern fn(*mut GGD_MeshGroup) -> *mut GGD_MeshInstance,
+	pub MeshInstance_Alloc: unsafe extern fn(*mut GGD_MeshGroup, cacheBuffer: *mut GGD_BufferInfo) -> *mut GGD_MeshInstance,
 	pub MeshInstance_Free: unsafe extern fn(*mut GGD_MeshInstance),
 	pub MeshInstance_SetMeshData: unsafe extern fn(*mut GGD_MeshInstance, mesh: *mut GGD_MeshData, index: u32),
-	pub MeshInstance_SetMeshSubset: unsafe extern fn(this: *mut GGD_MeshInstance, offset: u32, count: u32),
+	pub MeshInstance_SetMeshSubset: unsafe extern fn(*mut GGD_MeshInstance, offset: u32, count: u32),
 	pub MeshInstance_SetImageData: unsafe extern fn(*mut GGD_MeshInstance, image: *mut GGD_ImageData, layer: i32),
 	pub MeshInstance_SetAnimation: extern fn(*mut GGD_MeshInstance, firstIndex: u32, lastIndex: u32, frameRate: f32),
 	pub MeshInstance_SetTransform: unsafe extern fn(*mut GGD_MeshInstance, pose: *const GGTransform),

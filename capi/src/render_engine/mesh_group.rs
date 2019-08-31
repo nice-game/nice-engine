@@ -1,13 +1,10 @@
-use crate::{
-	ctx,
-	game_graph_driver::{GGD_ImageData, GGD_MeshGroup},
-};
+use crate::{ctx, game_graph::*, game_graph_driver::*};
 use log::trace;
 use nice_engine::mesh_group::MeshGroup;
 use std::ptr::null_mut;
 
 #[allow(non_snake_case)]
-pub unsafe extern fn MeshGroup_Alloc() -> *mut GGD_MeshGroup {
+pub unsafe extern fn MeshGroup_Alloc(_cacheBuffer: *mut GGD_BufferInfo) -> *mut GGD_MeshGroup {
 	trace!("MeshGroup_Alloc");
 
 	Box::into_raw(Box::new(MeshGroup::new(ctx::get())))
