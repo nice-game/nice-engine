@@ -31,12 +31,12 @@ pub unsafe extern fn Window_Alloc(info: *mut GGD_WindowInfo) -> *mut GGD_Window 
 		#[cfg(unix)]
 		GGPlatform::X11 => {
 			let info_ref = &*(info as *mut GGD_WindowInfo_X11);
-			Surface::from_xlib(ctx::get(), info_ref.display, info_ref.surface)
+			Surface::from_xlib(ctx::get(), info_ref.display, info_ref.window)
 		},
 		#[cfg(unix)]
 		GGPlatform::OSX => {
 			let info_ref = &*(info as *mut GGD_WindowInfo_X11);
-			Surface::from_xlib(ctx::get(), info_ref.display, info_ref.surface)
+			Surface::from_xlib(ctx::get(), info_ref.display, info_ref.window)
 		},
 		_ => panic!("invalid platform"),
 	};
