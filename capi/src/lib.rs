@@ -1,3 +1,5 @@
+#![feature(async_closure)]
+
 mod game_graph;
 mod game_graph_driver;
 mod render_engine;

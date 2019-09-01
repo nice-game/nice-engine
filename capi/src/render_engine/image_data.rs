@@ -1,12 +1,20 @@
-use crate::{ctx, game_graph::*, game_graph_driver::*};
-use futures::{future::lazy, task::SpawnExt};
+use crate::{
+	ctx,
+	game_graph::{GGD_BufferStatus::*, *},
+	game_graph_driver::*,
+};
+use futures::{future::ready, task::SpawnExt};
 use half::f16;
 use log::trace;
-use nice_engine::{texture::{ImmutableTexture, TargetTexture}, resources::TextureResource, threads::FILE_THREAD};
-use std::{ptr::null, slice, sync::Arc};
+use nice_engine::{
+	resources::TextureResource,
+	texture::{ImmutableTexture, TargetTexture},
+	threads::FILE_THREAD,
+};
+use std::{ptr::null, slice, sync::Arc, time::Duration};
 use vulkano::{
 	format::Format::{self, *},
-	sync::GpuFuture,
+	sync::{FlushError, GpuFuture},
 };
 
 #[allow(non_snake_case)]
@@ -56,10 +64,14 @@ pub unsafe extern fn ImageData_DrawPixelData(this: *mut GGD_ImageData, buffer: *
 				let res = TextureResource::new(ctx::get().resources().white_pixel().clone());
 				let res_clone = res.clone();
 
-				FILE_THREAD
-					.lock()
-					.unwrap()
-					.spawn(lazy(move |_| {
+				let task = async move {
+					if let Some(status) = buffer.status {
+						while status(buffer, GGD_BUFFER_READ as _) != GGD_BUFFER_READ as _ {
+							ready(()).await;
+						}
+					}
+
+					let (tex, tex_future): (_, Box<dyn GpuFuture + Send>) = {
 						let pixels = (buffer.read)(buffer, 0, buffer.size);
 
 						let queue = ctx::get().queue().clone();
@@ -68,7 +80,7 @@ pub unsafe extern fn ImageData_DrawPixelData(this: *mut GGD_ImageData, buffer: *
 
 						let format = format.into();
 
-						let (tex, tex_future): (_, Box<dyn GpuFuture>) = match format {
+						match format {
 							R8G8B8A8Unorm | R8G8B8A8Srgb => {
 								let buffer = slice::from_raw_parts(pixels as *const [u8; 4], len).iter().cloned();
 								let (tex, fut) = ImmutableTexture::from_iter_vk(queue, buffer, dims, format).unwrap();
@@ -85,17 +97,23 @@ pub unsafe extern fn ImageData_DrawPixelData(this: *mut GGD_ImageData, buffer: *
 								(tex, Box::new(fut))
 							},
 							_ => panic!("{:?} not supported", format),
-						};
-
-						tex_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
-
-						res_clone.set_texture(Arc::new(tex));
-
-						if let Some(status) = buffer.status {
-							status(buffer, GGD_BufferStatus::GGD_BUFFER_CLOSED as _);
 						}
-					}))
-					.unwrap();
+					};
+
+					let tex_future = tex_future.then_signal_fence_and_flush().unwrap();
+
+					while tex_future.wait(Some(Duration::new(0, 0))) == Err(FlushError::Timeout) {
+						ready(()).await;
+					}
+
+					res_clone.set_texture(Arc::new(tex));
+
+					if let Some(status) = buffer.status {
+						status(buffer, GGD_BUFFER_CLOSED as _);
+					}
+				};
+
+				FILE_THREAD.lock().unwrap().spawn(task).unwrap();
 
 				*this = GGD_ImageData::Initialized(res);
 			}
