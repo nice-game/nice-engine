@@ -7,7 +7,7 @@ pub mod pipelines;
 pub mod resources;
 pub mod surface;
 pub mod texture;
-mod threads;
+pub mod threads;
 pub mod transform;
 #[cfg(feature = "window")]
 pub mod window;

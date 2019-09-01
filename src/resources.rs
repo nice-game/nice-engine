@@ -103,19 +103,19 @@ impl Resources {
 	pub fn get_texture(&self, path: impl AsRef<Path> + Clone + Send + 'static) -> Arc<dyn Texture + Send + Sync> {
 		let tex = self.textures.lock().unwrap().get(path.as_ref()).cloned();
 		tex.unwrap_or_else(|| {
-			let tex = Arc::new(TextureResource { tex: AtomSetOnce::empty(), white_pixel: self.white_pixel.clone() });
+			let tex = TextureResource::new(self.white_pixel.clone());
 			load_tex(self.queue.clone(), tex.clone(), path.clone());
 			self.textures.lock().unwrap().insert(path.as_ref().to_owned(), tex.clone());
 			tex
 		})
 	}
 
-	pub(crate) fn sampler(&self) -> &Arc<Sampler> {
-		&self.sampler
+	pub fn white_pixel(&self) -> &Arc<dyn Texture + Send + Sync> {
+		&self.white_pixel
 	}
 
-	pub(crate) fn white_pixel(&self) -> &Arc<dyn Texture + Send + Sync> {
-		&self.white_pixel
+	pub(crate) fn sampler(&self) -> &Arc<Sampler> {
+		&self.sampler
 	}
 }
 
@@ -142,9 +142,18 @@ struct Material {
 	textures: [Arc<dyn Texture + Send + Sync>; 2],
 }
 
-struct TextureResource {
+pub struct TextureResource {
 	tex: AtomSetOnce<Box<Arc<dyn Texture + Send + Sync>>>,
 	white_pixel: Arc<dyn Texture + Send + Sync>,
+}
+impl TextureResource {
+	pub fn new(white_pixel: Arc<dyn Texture + Send + Sync>) -> Arc<Self> {
+		Arc::new(Self { tex: AtomSetOnce::empty(), white_pixel })
+	}
+
+	pub fn set_texture(&self, tex: Arc<dyn Texture + Send + Sync>) -> Option<Arc<dyn Texture + Send + Sync>> {
+		self.tex.set_if_none(Box::new(tex)).map(|tex| *tex)
+	}
 }
 impl Texture for TextureResource {
 	fn image(&self) -> &Arc<dyn ImageViewAccess + Send + Sync> {

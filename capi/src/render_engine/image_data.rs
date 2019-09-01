@@ -1,7 +1,8 @@
 use crate::{ctx, game_graph::*, game_graph_driver::*};
+use futures::{future::lazy, task::SpawnExt};
 use half::f16;
 use log::trace;
-use nice_engine::texture::{ImmutableTexture, TargetTexture};
+use nice_engine::{texture::{ImmutableTexture, TargetTexture}, resources::TextureResource, threads::FILE_THREAD};
 use std::{ptr::null, slice, sync::Arc};
 use vulkano::{
 	format::Format::{self, *},
@@ -46,48 +47,60 @@ pub unsafe extern fn ImageData_DrawPixelData(this: *mut GGD_ImageData, buffer: *
 
 	let this = &mut *this;
 	let buffer = &*buffer;
-	let pixels = (buffer.read)(buffer, 0, buffer.size);
 
 	match *this {
 		GGD_ImageData::Uninitialized { usage, x, y, format } => {
 			if usage.contains(GGImageUsage::IMG_USAGE_TARGET) {
 				unimplemented!();
 			} else {
-				let queue = ctx::get().queue().clone();
-				let dims = [x, y];
-				let len = x as usize * y as usize;
+				let res = TextureResource::new(ctx::get().resources().white_pixel().clone());
+				let res_clone = res.clone();
 
-				let format = format.into();
+				FILE_THREAD
+					.lock()
+					.unwrap()
+					.spawn(lazy(move |_| {
+						let pixels = (buffer.read)(buffer, 0, buffer.size);
 
-				let (tex, tex_future): (_, Box<dyn GpuFuture>) = match format {
-					R8G8B8A8Unorm | R8G8B8A8Srgb => {
-						let buffer = slice::from_raw_parts(pixels as *const [u8; 4], len).iter().cloned();
-						let (tex, fut) = ImmutableTexture::from_iter_vk(queue, buffer, dims, format).unwrap();
-						(tex, Box::new(fut))
-					},
-					R32G32B32A32Sfloat => {
-						let buffer = slice::from_raw_parts(pixels as *const [f32; 4], len).iter().cloned();
-						let (tex, fut) = ImmutableTexture::from_iter_vk(queue, buffer, dims, format).unwrap();
-						(tex, Box::new(fut))
-					},
-					R16G16B16A16Sfloat => {
-						let buffer = slice::from_raw_parts(pixels as *const [f16; 4], len).iter().cloned();
-						let (tex, fut) = ImmutableTexture::from_iter_vk(queue, buffer, dims, format).unwrap();
-						(tex, Box::new(fut))
-					},
-					_ => panic!("{:?} not supported", format),
-				};
+						let queue = ctx::get().queue().clone();
+						let dims = [x, y];
+						let len = x as usize * y as usize;
 
-				*this = GGD_ImageData::Initialized(Arc::new(tex));
+						let format = format.into();
 
-				tex_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
+						let (tex, tex_future): (_, Box<dyn GpuFuture>) = match format {
+							R8G8B8A8Unorm | R8G8B8A8Srgb => {
+								let buffer = slice::from_raw_parts(pixels as *const [u8; 4], len).iter().cloned();
+								let (tex, fut) = ImmutableTexture::from_iter_vk(queue, buffer, dims, format).unwrap();
+								(tex, Box::new(fut))
+							},
+							R32G32B32A32Sfloat => {
+								let buffer = slice::from_raw_parts(pixels as *const [f32; 4], len).iter().cloned();
+								let (tex, fut) = ImmutableTexture::from_iter_vk(queue, buffer, dims, format).unwrap();
+								(tex, Box::new(fut))
+							},
+							R16G16B16A16Sfloat => {
+								let buffer = slice::from_raw_parts(pixels as *const [f16; 4], len).iter().cloned();
+								let (tex, fut) = ImmutableTexture::from_iter_vk(queue, buffer, dims, format).unwrap();
+								(tex, Box::new(fut))
+							},
+							_ => panic!("{:?} not supported", format),
+						};
+
+						tex_future.then_signal_fence_and_flush().unwrap().wait(None).unwrap();
+
+						res_clone.set_texture(Arc::new(tex));
+
+						if let Some(status) = buffer.status {
+							status(buffer, GGD_BufferStatus::GGD_BUFFER_CLOSED as _);
+						}
+					}))
+					.unwrap();
+
+				*this = GGD_ImageData::Initialized(res);
 			}
 		},
 		GGD_ImageData::Initialized(_) => panic!("cannot write to initialized image"),
-	}
-
-	if let Some(status) = buffer.status {
-		status(buffer, GGD_BufferStatus::GGD_BUFFER_CLOSED as _);
 	}
 }
 

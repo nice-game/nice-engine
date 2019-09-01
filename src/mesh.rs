@@ -9,6 +9,7 @@ use std::{
 	},
 };
 use vulkano::{
+	VulkanObject,
 	descriptor::{descriptor_set::PersistentDescriptorSet, DescriptorSet, PipelineLayoutAbstract},
 	sampler::Sampler,
 };
@@ -105,6 +106,17 @@ impl MeshInner {
 	pub fn set_tex(&mut self, tex_i: usize, tex: Arc<dyn Texture + Send + Sync>) {
 		self.textures[tex_i] = tex;
 		self.desc = make_desc_set(self.layout_desc.clone(), &self.textures, self.sampler.clone());
+	}
+
+	pub(crate) fn refresh(&mut self) {
+		for i in 0..LAYERS {
+			let lhs_id = self.textures[i].image().inner().internal_object();
+			let rhs_id = self.desc.image(i).unwrap().0.inner().internal_object();
+			if lhs_id != rhs_id {
+				self.desc = make_desc_set(self.layout_desc.clone(), &self.textures, self.sampler.clone());
+				break;
+			}
+		}
 	}
 }
 

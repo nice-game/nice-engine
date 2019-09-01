@@ -90,7 +90,8 @@ impl Pipeline for DeferredPipeline {
 				.begin_render_pass(self.framebuffers[image_num].clone(), false, clear_values)
 				.unwrap();
 		for mesh in cam.mesh_group().meshes().lock().unwrap().values() {
-			let mesh = mesh.read().unwrap();
+			let mut mesh = mesh.write().unwrap();
+			mesh.refresh();
 
 			let mesh_data = if let Some(mesh_data) = mesh.mesh_data() { mesh_data } else { continue };
 
