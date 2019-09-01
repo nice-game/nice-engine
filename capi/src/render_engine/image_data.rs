@@ -3,13 +3,13 @@ use crate::{
 	game_graph::{GGD_BufferStatus::*, *},
 	game_graph_driver::*,
 };
-use futures::{future::ready, task::SpawnExt};
+use futures::task::SpawnExt;
 use half::f16;
 use log::trace;
 use nice_engine::{
 	resources::TextureResource,
 	texture::{ImmutableTexture, TargetTexture},
-	threads::FILE_THREAD,
+	threads::{yield_once, FILE_THREAD},
 };
 use std::{ptr::null, slice, sync::Arc, time::Duration};
 use vulkano::{
@@ -65,9 +65,12 @@ pub unsafe extern fn ImageData_DrawPixelData(this: *mut GGD_ImageData, buffer: *
 				let res_clone = res.clone();
 
 				let task = async move {
+					println!("start");
+
 					if let Some(status) = buffer.status {
 						while status(buffer, GGD_BUFFER_READ as _) != GGD_BUFFER_READ as _ {
-							ready(()).await;
+							println!("read wait");
+							yield_once().await;
 						}
 					}
 
@@ -103,7 +106,8 @@ pub unsafe extern fn ImageData_DrawPixelData(this: *mut GGD_ImageData, buffer: *
 					let tex_future = tex_future.then_signal_fence_and_flush().unwrap();
 
 					while tex_future.wait(Some(Duration::new(0, 0))) == Err(FlushError::Timeout) {
-						ready(()).await;
+						println!("fence wait");
+						yield_once().await;
 					}
 
 					res_clone.set_texture(Arc::new(tex));
@@ -111,6 +115,8 @@ pub unsafe extern fn ImageData_DrawPixelData(this: *mut GGD_ImageData, buffer: *
 					if let Some(status) = buffer.status {
 						status(buffer, GGD_BUFFER_CLOSED as _);
 					}
+
+					println!("end");
 				};
 
 				FILE_THREAD.lock().unwrap().spawn(task).unwrap();
