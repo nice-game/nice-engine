@@ -68,7 +68,7 @@ impl Context {
 			mvk_ios_surface: true,
 			mvk_macos_surface: true,
 			#[cfg(debug_assertions)]
-			ext_debug_report: true,
+			ext_debug_utils: true,
 			..InstanceExtensions::none()
 		};
 
@@ -95,7 +95,7 @@ impl Context {
 
 		#[cfg(debug_assertions)]
 		let debug_callback = DebugCallback::errors_and_warnings(&instance, |msg| {
-			if msg.ty.error {
+			if msg.severity.error {
 				log::error!("[{}]{}", msg.layer_prefix, msg.description);
 			} else {
 				log::warn!("[{}]{}", msg.layer_prefix, msg.description);
