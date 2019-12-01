@@ -1,3 +1,4 @@
+#![allow(improper_ctypes)]
 #![feature(async_closure)]
 
 mod game_graph;

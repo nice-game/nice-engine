@@ -127,7 +127,7 @@ impl Pipeline for DeferredPipeline {
 							desc,
 							pc,
 						)
-						.unwrap()
+						.unwrap();
 				},
 			}
 		}

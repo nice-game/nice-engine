@@ -8,4 +8,4 @@ edition = "2018"
 cgmath = "0.17.0"
 nice-engine = { path = "../.." }
 simplelog = "0.5"
-winit = "0.20.0-alpha4"
+winit = "0.19.5"

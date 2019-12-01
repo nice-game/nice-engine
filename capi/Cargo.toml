@@ -16,4 +16,4 @@ libc = "0.2"
 log = "0.4.7"
 nice-engine = { path = "../", default-features = false }
 simplelog = "0.5"
-vulkano = { git = "https://github.com/vulkano-rs/vulkano.git" }
+vulkano = "0.16.0"
